@@ -45,6 +45,9 @@ function luc_model(;
     crsf_c1     = crsf_c1,  # Multiplier of the regeneration costs of secondary forest
     crsf_c2     = crsf_c2,  # Power of the regeneration costs of secondary forest
     D           = D,        # Density of the primary forest  (constant)
+    bc_c1       = bc_c1 ,   # Carbon initial price
+    bc_c2       = bc_c2,    # Carbon price growth rate
+
     # Init values...
     F₀          = F₀,       # Initial primary-forest area
     S₀          = S₀,       # Initial secondary forest area
@@ -59,19 +62,21 @@ function luc_model(;
 
   # Functions...
   discount(t; σ=σ)                                                 = exp(-σ*t) # discount function
-  ben_env(F;benv_c1=benv_c1,benv_c2=benv_c2)                       = (benv_c1*F^benv_c2) # Environmental benefits [€]
-  ben_agr(A;bagr_c1=bagr_c1,bagr_c2=bagr_c2)                       = (bagr_c1*A^bagr_c2) # Agricultural use benefits [€]
-  ben_wood(S,V,d,h;bwood_c1=bwood_c1,bwood_c2=bwood_c2,D=D)        = (bwood_c1*(d * D + h * V/S)^bwood_c2) # Wood use benefits [€]
-  cost_pfharv(F,d;chpf_c1=chpf_c1,chpf_c2=chpf_c2,chpf_c3=chpf_c3) = (chpf_c1 * d^chpf_c2 * F^chpf_c3) # Harvesting primary forest costs [€]
+  ben_env(F;benv_c1=benv_c1,benv_c2=benv_c2)                       = (benv_c1*F^benv_c2) # Environmental benefits [M$]
+  ben_agr(A;bagr_c1=bagr_c1,bagr_c2=bagr_c2)                       = (bagr_c1*A^bagr_c2) # Agricultural use benefits [M$]
+  ben_wood(S,V,d,h;bwood_c1=bwood_c1,bwood_c2=bwood_c2,D=D)        = (bwood_c1*(d * D + h * V/S)^bwood_c2) # Wood use benefits [M$]
+  ben_carbon(S,V,d,h,t; D=D,γ=γ,K=K,bc_c1=bc_c1,bc_c2=bc_c2)       = bc_c1*exp(bc_c2 * t) * (var_vol_sf(S,V,h,γ=γ,K=K) - (d * D )  ) # Carbon benefits [M$]
+  cost_pfharv(F,d;chpf_c1=chpf_c1,chpf_c2=chpf_c2,chpf_c3=chpf_c3) = (chpf_c1 * (d*D)^chpf_c2 * F^chpf_c3) # Harvesting primary forest costs [€]
   cost_sfharv(S,V,h;chsf_c1=chsf_c1,chsf_c2=chsf_c2)               = (chsf_c1 * (h * V/S)^chsf_c2)  # Harvesting secondary forest costs [€]
   cost_sfreg(r;crsf_c1=crsf_c1,crsf_c2=crsf_c2)                    = (crsf_c1 * r ^ crsf_c2)  # Regeneration of secondary forest costs [€]
+  
 
-  function welfare(F,S,A,V,d,h,r;)
+  function welfare(F,S,A,V,d,h,r,t;)
       return (
         ben_env(F;)
       + ben_agr(A;)
       + ben_wood(S,V,d,h;) 
-      + 0 * var_vol_sf(S,V,h)
+      + ben_carbon(S,V,d,h,t)
       - cost_pfharv(F,d;)
       - cost_sfharv(S,V,h;)
       - cost_sfreg(r)
@@ -82,7 +87,7 @@ function luc_model(;
   var_area_pf(d)          = -d
   var_area_sf(r)          = r
   var_area_ag(d,r)        = d - r
-  var_vol_sf(S,V,h;γ=γ,K=K) = (V)*γ*(1-(V / (S * K) )) - h * (V/S) # See https://en.wikipedia.org/wiki/Logistic_function#In_ecology:_modeling_population_growth (the logistic growth is in terms of density: (V_sf/A_sf)*γ*(1-((V_sf/A_sf) /maxD ))*A_sf -hV_sf )
+  var_vol_sf(S,V,h;γ=γ,K=K) = (V)*γ*(1-(V / (S * K) )) - h * (V/S) # Mm³ See https://en.wikipedia.org/wiki/Logistic_function#In_ecology:_modeling_population_growth (the logistic growth is in terms of density: (V_sf/A_sf)*γ*(1-((V_sf/A_sf) /maxD ))*A_sf -hV_sf )
 
 
   # To check only...
@@ -144,7 +149,7 @@ function luc_model(;
   @constraint(m, dV_sf, deriv(V, t) == var_vol_sf(S,V,h))
 
 
-  @objective(m, Max, integral(welfare(F,S,A,V,d,h,r), t, weight_func = discount))
+  @objective(m, Max, integral(welfare(F,S,A,V,d,h,r,t), t, weight_func = discount))
 
   # Optimisation and retrival of optimal data/time path
   optimize!(m)
@@ -162,14 +167,15 @@ function luc_model(;
   ben_env_opt = ben_env.(F_opt)
   ben_agr_opt     = ben_agr.(A_opt)
   ben_wood_opt    = ben_wood.(S_opt,V_opt,d_opt,h_opt)
+  ben_carbon_opt  = ben_carbon.(S_opt,V_opt,d_opt,h_opt,ts)
   cost_pfharv_opt = cost_pfharv.(F_opt,d_opt,)
   cost_sfharv_opt = cost_sfharv.(S_opt,V_opt,h_opt)
   cost_sfreg_opt  = cost_sfreg.(r_opt)
-  welfare_opt     = welfare.(F_opt,S_opt,A_opt,V_opt,d_opt,h_opt,r_opt)
+  welfare_opt     = welfare.(F_opt,S_opt,A_opt,V_opt,d_opt,h_opt,r_opt,ts)
 
   return (F=F_opt, S=S_opt, A=A_opt, V=V_opt, d=d_opt, h=h_opt, r=r_opt,
           obj=opt_obj, support= ts, status=status,
-          ben_env = ben_env_opt, ben_agr = ben_agr_opt, ben_wood= ben_wood_opt,
+          ben_env = ben_env_opt, ben_agr = ben_agr_opt, ben_wood= ben_wood_opt, ben_carbon = ben_carbon_opt,
           cost_pfharv = cost_pfharv_opt, cost_sfharv = cost_sfharv_opt, cost_sfreg = cost_sfreg_opt,
           welfare = welfare_opt
           )

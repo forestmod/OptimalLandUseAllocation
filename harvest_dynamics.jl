@@ -9,6 +9,7 @@ Pkg.activate(".")
 using Plots
 using Markdown
 
+# Load the model structure (function "luc_model")
 includet("model.jl")
 using .OLUA
 
@@ -29,10 +30,6 @@ Abbreviations:
 - h5: Costs of harvesting $PF$ are inversely proportional to the area of $PF$
 - h6: The society can "control" the harvesting of primary forest $d$, the harvesting of secondary forest $h$ and the allocation of harvested primary forest
 """
-
-
-# Load the model structure (function "luc_model")
-includet("model.jl")
 
 # just to check..
 logistic(x;k,r,x0) = k/(1+((k-x0)/x0)*exp(-r*x))
@@ -56,6 +53,8 @@ plot!(times, out.d[ix] - out.r[ix], lab = "new agricultural area", linecolor="si
 plot(times, out.F[ix] .* OLUA.D, lab = "V (pf): primary forest volumes",linecolor="darkgreen", title="Growing Volumes")
 plot!(times, out.V[ix], lab = "V: secondary forest volumes", linecolor="darkseagreen3")
 # 20230913: Checked by setting dA_sf = 0 and dV_sf only to the natural dynamics (removing harvesting) that the path of V_opt_sf follows the logistic function with the given parameters 
+plot(times, out.F[ix] .* OLUA.D .+ out.V[ix],  lab = "TOT V: total forest volumes", linecolor="darkseagreen3")
+
 
 
 
@@ -67,15 +66,19 @@ plot!(times, out.h[ix], lab = "h: secondary forest harvested area",linecolor="da
 plot(times,  out.d[ix] .* OLUA.D, lab = "hV_pf: primary forest harvested volumes", linecolor="darkgreen", title="Distribution of Harvested volumes")
 plot!(times, out.h[ix] .* out.V[ix] ./ out.S[ix], lab = "hV_sf: secondary forest harvested volumes", linecolor="darkseagreen3")
 
+plot!(times, out.d[ix] .* OLUA.D .+ out.h[ix] .* out.V[ix] ./ out.S[ix], lab = "hV: total forest harvested volumes", linecolor="darkseagreen3")
+
 plot(times, out.V[ix] ./ out.S[ix], lab = "Secondary forest density", linecolor="darkseagreen3", title= "Secondary forest density")
 
 
 plot(times,  out.ben_env[ix], lab = "Environmental benefits", linecolor="darkgreen", title="Benefits") 
 plot!(times, out.ben_agr[ix], lab = "Agr benefits",linecolor="sienna") 
 plot!(times, out.ben_wood[ix], lab = "Wood use benefits", linecolor="darkseagreen3")
+plot!(times, out.ben_carbon[ix], lab = "Carbon benefits", linecolor="grey")
 plot!(times, .- out.cost_pfharv[ix], lab = "PF harvesting costs", linecolor="darkgreen")
 plot!(times, .- out.cost_sfharv[ix], lab = "SF harvesting costs", linecolor="darkseagreen3")
 plot!(times, .- out.cost_sfreg[ix], lab = "SF regeneration costs",linecolor="sienna")
+
 plot(times, out.welfare[ix], lab = "Total welfare") 
 
 out_msy = luc_model(σ  = 0)
