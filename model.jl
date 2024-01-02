@@ -1,6 +1,10 @@
 
 module OLUA # OptimalLandUseAllocation
 
+using Ipopt
+using InfiniteOpt # To automatically "discretize" a continuous variable, like time in this case
+using Markdown
+
 # Load exoxes parameters and options
 include("default_data.jl")
 
@@ -24,32 +28,33 @@ Control variables:
 """
 
 function luc_model(;
-    σ        = σ,        # Discount rate 
-    K        = K,        # Maximum density of the secondary forest (i.e. carrying capacity), 
-    γ        = γ,        # Growth rate of the logistic function in terms of density
-    benv_c1  = benv_c1,  # Multiplier of the environmental benefits
-    benv_c2  = benv_c2,  # Power of the environmantal benefit
-    bagr_c1  = bagr_c1,  # Multiplier of the agricultural benefits
-    bagr_c2  = bagr_c2,  # Power of the agricultural benefits
-    bwood_c1 = bwood_c1, # Multiplier of the wood-use benefits
-    bwood_c2 = bwood_c2, # Power of the wood-use benefits
-    chpf_c1  = chpf_c1,  # Multiplier of the harvesting costs of primary forest
-    chpf_c2  = chpf_c2,  # Power of the harvesting costs of primary forest (harvested area)
-    chpf_c3  = chpf_c3,  # Power of the harvesting costs of primary forest (primary forest area)
-    chsf_c1  = chsf_c1,  # Multiplier of the harvesting costs of secondary forest
-    chsf_c2  = chsf_c2,  # Power of the harvesting costs of secondary forest
-    crsf_c1  = crsf_c1,  # Multiplier of the regeneration costs of secondary forest
-    crsf_c2  = crsf_c2,  # Power of the regeneration costs of secondary forest
-    D        = D,        # Density of the primary forest  (constant)
+    σ           = σ,        # Discount rate 
+    K           = K,        # Maximum density of the secondary forest (i.e. carrying capacity), 
+    γ           = γ,        # Growth rate of the logistic function in terms of density
+    benv_c1     = benv_c1,  # Multiplier of the environmental benefits
+    benv_c2     = benv_c2,  # Power of the environmantal benefit
+    bagr_c1     = bagr_c1,  # Multiplier of the agricultural benefits
+    bagr_c2     = bagr_c2,  # Power of the agricultural benefits
+    bwood_c1    = bwood_c1, # Multiplier of the wood-use benefits
+    bwood_c2    = bwood_c2, # Power of the wood-use benefits
+    chpf_c1     = chpf_c1,  # Multiplier of the harvesting costs of primary forest
+    chpf_c2     = chpf_c2,  # Power of the harvesting costs of primary forest (harvested area)
+    chpf_c3     = chpf_c3,  # Power of the harvesting costs of primary forest (primary forest area)
+    chsf_c1     = chsf_c1,  # Multiplier of the harvesting costs of secondary forest
+    chsf_c2     = chsf_c2,  # Power of the harvesting costs of secondary forest
+    crsf_c1     = crsf_c1,  # Multiplier of the regeneration costs of secondary forest
+    crsf_c2     = crsf_c2,  # Power of the regeneration costs of secondary forest
+    D           = D,        # Density of the primary forest  (constant)
     # Init values...
-    F₀       = F₀,       # Initial primary-forest area
-    S₀       = S₀,       # Initial secondary forest area
-    A₀       = A₀,       # Initial agricultural area
-    V₀       = V₀,       # Initial secondary forest volumes
+    F₀          = F₀,       # Initial primary-forest area
+    S₀          = S₀,       # Initial secondary forest area
+    A₀          = A₀,       # Initial agricultural area
+    V₀          = V₀,       # Initial secondary forest volumes
     # Options
-    opt      = Ipopt.Optimizer,  # Desired optimizer (solver)
-    T        = T,     # Time horizont
-    ns       = ns       # nNmber of supports on which to divide the time horizon
+    optimizer   = optimizer,  # Desired optimizer (solver)
+    opt_options = opt_options, # Optimizer options
+    T           = T,     # Time horizont
+    ns          = ns       # nNmber of supports on which to divide the time horizon
   ) 
 
   # Functions...
@@ -99,7 +104,8 @@ function luc_model(;
 
 
 
-  m = InfiniteModel(opt)
+  solver = optimizer_with_attributes(optimizer, opt_options...)
+  m      = InfiniteModel(solver)
   @infinite_parameter(m, t in [1, T+1], num_supports = ns)
 
   # Variables declaration...

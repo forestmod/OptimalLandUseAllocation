@@ -3,10 +3,14 @@
 cd(@__DIR__)
 using Pkg
 Pkg.activate(".")
+#Pkg.resolve()
 #Pkg.Instantiate()
-using InfiniteOpt # To automatically "discretize" a continuous variable, like time in this case
-using Ipopt, Plots
+
+using Plots
 using Markdown
+
+includet("model.jl")
+using .OLUA
 
 # ------------------------------------------------------------------------------
 # Symbols
@@ -37,7 +41,7 @@ plot(x->logistic(x,k=200,r=0.05,x0=30),0,200)
 # Load the "base" optimisation...
 out = luc_model()
 
-ix = 1:(length(out.support)-150) # index for plotting
+ix = 2:(length(out.support)-150) # index for plotting
 times = out.support[ix]
 
 plot(times,  out.F[ix], lab = "F: primary forest area", linecolor="darkgreen", title="Land Areas")
@@ -49,7 +53,7 @@ plot!(times, out.r[ix], lab = "r: secondary forest regenerated area", linecolor=
 plot!(times, out.d[ix] - out.r[ix], lab = "new agricultural area", linecolor="sienna")
 
 
-plot(times, out.F[ix] .* D, lab = "V (pf): primary forest volumes",linecolor="darkgreen", title="Growing Volumes")
+plot(times, out.F[ix] .* OLUA.D, lab = "V (pf): primary forest volumes",linecolor="darkgreen", title="Growing Volumes")
 plot!(times, out.V[ix], lab = "V: secondary forest volumes", linecolor="darkseagreen3")
 # 20230913: Checked by setting dA_sf = 0 and dV_sf only to the natural dynamics (removing harvesting) that the path of V_opt_sf follows the logistic function with the given parameters 
 
@@ -60,7 +64,7 @@ plot!(times, out.h[ix], lab = "h: secondary forest harvested area",linecolor="da
 
 
 
-plot(times,  out.d[ix] .* D, lab = "hV_pf: primary forest harvested volumes", linecolor="darkgreen", title="Distribution of Harvested volumes")
+plot(times,  out.d[ix] .* OLUA.D, lab = "hV_pf: primary forest harvested volumes", linecolor="darkgreen", title="Distribution of Harvested volumes")
 plot!(times, out.h[ix] .* out.V[ix] ./ out.S[ix], lab = "hV_sf: secondary forest harvested volumes", linecolor="darkseagreen3")
 
 plot(times, out.V[ix] ./ out.S[ix], lab = "Secondary forest density", linecolor="darkseagreen3", title= "Secondary forest density")
@@ -74,7 +78,7 @@ plot!(times, .- out.cost_sfharv[ix], lab = "SF harvesting costs", linecolor="dar
 plot!(times, .- out.cost_sfreg[ix], lab = "SF regeneration costs",linecolor="sienna")
 plot(times, out.welfare[ix], lab = "Total welfare") 
 
-out_msy = luc_model( )#  σ  = 0)
+out_msy = luc_model(σ  = 0)
 plot(times,  out.V[ix] ./ out.S[ix], lab = "BAU", linecolor="darkseagreen3", title="D: secondary forest density")
 plot!(times, out_msy.V[ix] ./ out_msy.S[ix], lab = "Increased env benefits", linecolor="darkseagreen3", ls=:dot)
 
@@ -82,7 +86,7 @@ plot!(times, out_msy.V[ix] ./ out_msy.S[ix], lab = "Increased env benefits", lin
 
 # Increase of Environmental Benefits
 
-out_benv = luc_model(benv_c1 = benv_c1*1.5)
+out_benv = luc_model(benv_c1 = OLUA.benv_c1*1.5)
 plot(times,  out.F[ix], lab = "BAU", linecolor="darkgreen", title="F: primary forest area")
 plot!(times,  out_benv.F[ix], lab = "Increased env benefits", linecolor="darkgreen",ls=:dot )
 
