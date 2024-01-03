@@ -9,6 +9,7 @@ Pkg.activate(".")
 using Plots
 using Markdown
 using Revise
+using Test
 
 # Load the model structure (function "luc_model")
 includet("model.jl")
@@ -32,15 +33,38 @@ Abbreviations:
 - h6: The society can "control" the harvesting of primary forest $d$, the harvesting of secondary forest $h$ and the allocation of harvested primary forest
 """
 
-out = luc_model()
-ix = 1:(length(out.support)-300) # index for plotting
-times = out.support[ix]
-
 # Load the "base" optimisation...
-#out = luc_model(ns=1001,opt_options = Dict("max_cpu_time" => 60.0))
+base = luc_model()
+ix = 1:(length(base.support)-300) # index for plotting
+times = base.support[ix] # Every 5 years
 
-#ix = 1:(length(out.support)-750) # index for plotting
-#times = out.support[ix]
+# ------------------------------------------------------------------------------
+# Check 1: using less or more points doesn't influence much the results
+out_dense    = luc_model(ns=1001,opt_options = Dict("max_cpu_time" => 60.0))
+ix_dense     = 1:(length(out_dense.support)-750) # index for plotting
+times_dense  = out_dense.support[ix_dense] # every 2 years
+out_sparce   = luc_model(ns=201)
+ix_sparce    = 1:(length(out_sparce.support)-150) # index for plotting
+times_sparce = out_sparce.support[ix_sparce] # every 10 years
+
+@test isapprox(base.F[findfirst(t-> t==50,times)],out_dense.F[findfirst(t-> t==50,times_dense)],rtol=0.05)
+@test isapprox(base.F[findfirst(t-> t==50,times)],out_sparce.F[findfirst(t-> t==50,times_sparce)],rtol=0.05)
+@test isapprox(base.r[findfirst(t-> t==50,times)],out_dense.r[findfirst(t-> t==50,times_dense)],rtol=0.1)
+@test isapprox(base.r[findfirst(t-> t==50,times)],out_sparce.r[findfirst(t-> t==50,times_sparce)],rtol=0.1)
+
+# Graphically...
+plot(times, base.F[1:101]);
+plot!(times_dense, out_dense.F[1:251]);
+plot!(times_sparce, out_sparce.F[1:51])
+
+plot(times, base.r[1:101]);
+plot!(times_dense, out_dense.r[1:251]);
+plot!(times_sparce, out_sparce.r[1:51])
+
+
+
+
+
 
 plot(times,  out.F[ix], lab = "F: primary forest area", linecolor="darkgreen", title="Land Areas")
 plot!(times, out.S[ix], lab = "S: secondary forest area", linecolor="darkseagreen3")
