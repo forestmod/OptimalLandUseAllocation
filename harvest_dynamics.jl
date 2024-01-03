@@ -8,6 +8,7 @@ Pkg.activate(".")
 
 using Plots
 using Markdown
+using Revise
 
 # Load the model structure (function "luc_model")
 includet("model.jl")
@@ -31,15 +32,15 @@ Abbreviations:
 - h6: The society can "control" the harvesting of primary forest $d$, the harvesting of secondary forest $h$ and the allocation of harvested primary forest
 """
 
-# just to check..
-logistic(x;k,r,x0) = k/(1+((k-x0)/x0)*exp(-r*x))
-plot(x->logistic(x,k=200,r=0.05,x0=30),0,200)
+out = luc_model()
+ix = 1:(length(out.support)-300) # index for plotting
+times = out.support[ix]
 
 # Load the "base" optimisation...
-out = luc_model()
+#out = luc_model(ns=1001,opt_options = Dict("max_cpu_time" => 60.0))
 
-ix = 2:(length(out.support)-150) # index for plotting
-times = out.support[ix]
+#ix = 1:(length(out.support)-750) # index for plotting
+#times = out.support[ix]
 
 plot(times,  out.F[ix], lab = "F: primary forest area", linecolor="darkgreen", title="Land Areas")
 plot!(times, out.S[ix], lab = "S: secondary forest area", linecolor="darkseagreen3")

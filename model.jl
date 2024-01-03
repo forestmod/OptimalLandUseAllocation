@@ -4,6 +4,7 @@ module OLUA # OptimalLandUseAllocation
 using Ipopt
 using InfiniteOpt # To automatically "discretize" a continuous variable, like time in this case
 using Markdown
+using Revise
 
 # Load exoxes parameters and options
 include("default_data.jl")
@@ -53,6 +54,7 @@ function luc_model(;
     S₀          = S₀,       # Initial secondary forest area
     A₀          = A₀,       # Initial agricultural area
     V₀          = V₀,       # Initial secondary forest volumes
+    d₀          = d₀,       # First prim for harvesting
     # Options
     optimizer   = optimizer,  # Desired optimizer (solver)
     opt_options = opt_options, # Optimizer options
@@ -68,7 +70,7 @@ function luc_model(;
   ben_carbon(S,V,d,h,t; D=D,γ=γ,K=K,bc_c1=bc_c1,bc_c2=bc_c2)       = bc_c1*exp(bc_c2 * t) * (var_vol_sf(S,V,h,γ=γ,K=K) - (d * D )  ) # Carbon benefits [M$]
   cost_pfharv(F,d;chpf_c1=chpf_c1,chpf_c2=chpf_c2,chpf_c3=chpf_c3) = (chpf_c1 * (d*D)^chpf_c2 * F^chpf_c3) # Harvesting primary forest costs [€]
   cost_sfharv(S,V,h;chsf_c1=chsf_c1,chsf_c2=chsf_c2)               = (chsf_c1 * (h * V/S)^chsf_c2)  # Harvesting secondary forest costs [€]
-  cost_sfreg(r;crsf_c1=crsf_c1,crsf_c2=crsf_c2)                    = (crsf_c1 * r ^ crsf_c2)  # Regeneration of secondary forest costs [€]
+  cost_sfreg(r,h;crsf_c1=crsf_c1,crsf_c2=crsf_c2)                  = (crsf_c1 * (r+h) ^ crsf_c2)  # Regeneration of secondary forest costs [€]
   
 
   function welfare(F,S,A,V,d,h,r,t;)
@@ -79,7 +81,7 @@ function luc_model(;
       + ben_carbon(S,V,d,h,t)
       - cost_pfharv(F,d;)
       - cost_sfharv(S,V,h;)
-      - cost_sfreg(r)
+      - cost_sfreg(r,h)
       )
   end
 
@@ -111,7 +113,7 @@ function luc_model(;
 
   solver = optimizer_with_attributes(optimizer, opt_options...)
   m      = InfiniteModel(solver)
-  @infinite_parameter(m, t in [1, T+1], num_supports = ns)
+  @infinite_parameter(m, t in [0, T], num_supports = ns)
 
   # Variables declaration...
   @variable(m, F >= 0, Infinite(t), start = F₀ )  # prim forest area
@@ -122,13 +124,12 @@ function luc_model(;
   @variable(m, r >= 0, Infinite(t), start = r₀ )  # sec for reg area
   @variable(m, h >= 0, Infinite(t), start = h₀  ) # sec for harv area
 
-
   # Initial conditions....
-  @constraint(m, F(1)  == F₀)
-  @constraint(m, S(1)  == S₀)
-  @constraint(m, A(1)  == A₀)
-  @constraint(m, V(1)  == V₀)
-  @constraint(m, d(1)  == 0)
+  @constraint(m, F(0)  == F₀)
+  @constraint(m, S(0)  == S₀)
+  @constraint(m, A(0)  == A₀)
+  @constraint(m, V(0)  == V₀)
+  @constraint(m, d(0)  == d₀)
   #@constraint(m, h(0)  == 0)
   #@constraint(m, r(0)  == 0)
 
@@ -170,7 +171,7 @@ function luc_model(;
   ben_carbon_opt  = ben_carbon.(S_opt,V_opt,d_opt,h_opt,ts)
   cost_pfharv_opt = cost_pfharv.(F_opt,d_opt,)
   cost_sfharv_opt = cost_sfharv.(S_opt,V_opt,h_opt)
-  cost_sfreg_opt  = cost_sfreg.(r_opt)
+  cost_sfreg_opt  = cost_sfreg.(r_opt,h_opt)
   welfare_opt     = welfare.(F_opt,S_opt,A_opt,V_opt,d_opt,h_opt,r_opt,ts)
 
   return (F=F_opt, S=S_opt, A=A_opt, V=V_opt, d=d_opt, h=h_opt, r=r_opt,
