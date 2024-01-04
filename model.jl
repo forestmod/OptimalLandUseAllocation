@@ -167,6 +167,9 @@ function luc_model(;
   d_opt    = value.(d)
   h_opt    = value.(h)
   r_opt    = value.(r)
+  
+  pA       = dual.(dA_pf)
+
   ts       = supports(t)
   opt_obj  = objective_value(m) 
   ben_env_opt = ben_env.(F_opt)

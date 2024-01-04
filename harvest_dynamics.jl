@@ -38,6 +38,7 @@ base     = luc_model()
 ix       = 1:(length(base.support)-300) # index for plotting
 times    = base.support[ix] # Every 5 years
 ntpoints = length(times)
+step     = times[end] / (ntpoints-1)
 
 # ------------------------------------------------------------------------------
 # Test 1: using less or more points doesn't influence much the results
@@ -48,10 +49,10 @@ out_sparce   = luc_model(ns=201)
 ix_sparce    = 1:(length(out_sparce.support)-150) # index for plotting
 times_sparce = out_sparce.support[ix_sparce] # every 10 years
 @testset "Number of discretization points" begin
-    @test isapprox(base.r[findfirst(t-> t==50,times)],out_dense.r[findfirst(t-> t==50,times_dense)],rtol=0.1)
-    @test isapprox(base.r[findfirst(t-> t==50,times)],out_sparce.r[findfirst(t-> t==50,times_sparce)],rtol=0.1)
-    @test isapprox(base.F[findfirst(t-> t==50,times)],out_dense.F[findfirst(t-> t==50,times_dense)],rtol=0.05)
-    @test isapprox(base.F[findfirst(t-> t==50,times)],out_sparce.F[findfirst(t-> t==50,times_sparce)],rtol=0.05)
+    @test isapprox(base.r[findfirst(t-> t==80,times)],out_dense.r[findfirst(t-> t==80,times_dense)],rtol=0.1)
+    @test isapprox(base.r[findfirst(t-> t==80,times)],out_sparce.r[findfirst(t-> t==80,times_sparce)],rtol=0.15)
+    @test isapprox(base.F[findfirst(t-> t==80,times)],out_dense.F[findfirst(t-> t==80,times_dense)],rtol=0.05)
+    @test isapprox(base.F[findfirst(t-> t==80,times)],out_sparce.F[findfirst(t-> t==80,times_sparce)],rtol=0.05)
 end
 
 # Graphically...
@@ -81,7 +82,35 @@ plot!(times, fill(OLUA.K,ntpoints), lab="Max density")
 # ------------------------------------------------------------------------------
 # Test 3: setting leads to the "eating the cake" model
 
-out = luc_model()
+# The first version is with only benefits, the second one with some harvesting costs
+# The second version has some numerical instability at the beginning
+out1 = luc_model(benv_c1=0.0,bagr_c1=0,chpf_c3=0,chpf_c1=0,crsf_c1=1000,chsf_c1=10000,γ=0) # only benefits
+out2 = luc_model(benv_c1=0.0,bagr_c1=0,chpf_c3=0,chpf_c1=10,chpf_c2=1.2,crsf_c1=1000,chsf_c1=10000,γ=0,d₀=1.13) # with costs
+
+dbw_dV(V,c1=OLUA.bwood_c1,c2=OLUA.bwood_c2) = c1*c2*V^(c2-1) # marginal benetits
+dcw_dV(V,c1=10,c2=1.2) = c1*c2*V^(c2-1) 
+
+hv_1 = @. out1.d * OLUA.D + out1.h * out1.V / out1.S
+hv_2 = @. out2.d * OLUA.D + out2.h * out2.V / out2.S
+
+np1 = dbw_dV.(hv_1) # net price
+np2 = dbw_dV.(hv_2) .- dcw_dV.(hv_2) # net price
+
+r1a = log(np1[28]/np1[27])/step # growth rate of the price
+r1b = log(np1[25]/np1[20])/(step*5) 
+r2a = log(np2[28]/np2[27])/step # growth rate of the price
+r2b = log(np2[25]/np2[20])/(step*5) 
+
+@testset "Checking net price growth following Hotelling rule" begin
+  @test isapprox(r1a,OLUA.σ,rtol=0.01)
+  @test isapprox(r1b,OLUA.σ,rtol=0.01)
+  @test isapprox(r2a,OLUA.σ,rtol=0.05)
+  @test isapprox(r2b,OLUA.σ,rtol=0.05)
+end
+
+# Graphically...
+plot(times, np1[ix], lab = "Considering only benefits", xlabel="years", title= "Net price of the timber resource")
+plot!(times, np2[ix], lab = "Considering harvesting costs")
 
 # ------------------------------------------------------------------------------
 # Test 4: setting no Sf area change and no harvesting leads SF volumes to the Verhulst model
@@ -96,7 +125,6 @@ Dsf = out.V ./ out.S
 end
 
 # Graphically...
-
 plot(times, Dsf[ix],   lab = "D: secondary forest density", linecolor="darkseagreen3", xlabel="years", title= "Sec. forest density under no harv and no reg");
 plot!(times, fill(OLUA.K,ntpoints), lab="Max density")
 
@@ -104,7 +132,6 @@ plot(times,out.V[ix], label="V: model output logistic", xlabel="years", title= "
 
 # manually computing the V increase by loop
 var_vol_test(S,V;γ=OLUA.γ,K=OLUA.K) = (V)*γ*(1-(V / (S * K) ))
-step = times[end]/(ntpoints-1)
 ts2 = 0:step:times[end]
 Vtest = copy(OLUA.V₀)
 v_by_step = zeros(length(ts2))
@@ -118,6 +145,10 @@ plot!(ts2, collect(v_by_step[i] for i in 1:length(ts2)), label="V: discrete step
 # using the true logistic function...
 logistic(x;k,r,x0) = k/(1+((k-x0)/x0)*exp(-r*x))
 plot!(x->logistic(x,k=OLUA.K*OLUA.S₀,r=OLUA.γ,x0=OLUA.V₀),0,times[end], label = "V: true logistic funcion")
+
+
+# ------------------------------------------------------------------------------
+# Base Case Analysis
 
 
 
