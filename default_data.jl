@@ -8,8 +8,8 @@
 # - Forest volumes (M m³): idem, p 44
 # - Agricultural area (M ha): World bank 2020, https://data.worldbank.org/indicator/AG.LND.AGRI.K2?locations=BR
 TOT_LAND = (485_396_011 + 11_223_609 + 2_387_471 * 100) / 1_000_000
-F₀ = 485_396_011.0 / 1_000_000   # Init Primary Forest area Source: 
-S₀ = 11_223_609 / 1_000_000       # Init Secondary Forest area
+F₀ = 485_396_011.0 / 1_000_000   # Init Primary Forest area [M ha]
+S₀ = 11_223_609 / 1_000_000       # Init Secondary Forest area [M ha]
 A₀ = 2_387_471 * 100  / 1_000_000 # Init Agricultural area [M ha]
 V₀ = 3_056_570_000 / 1_000_000    # Init timber volumes of secondary forests [M m^3]
 d₀ = F₀/1000        # Init prim forest harvesting area (used only to compute parameter and start value in the sense of optimisation start) [M ha]
@@ -91,7 +91,7 @@ Hence it is such that cost_pfharv is in M\$
 """
 chpf_c1    = 10 * (d₀*D) / ((d₀*D)^chpf_c2 * F₀^chpf_c3) # Multiplier of the harvesting costs of primary forest
 # --------
-chsf_c2    = 0    # Power of the harvesting costs of secondary forest
+chsf_c2    = 1    # Power of the harvesting costs of secondary forest
 """
 Multiplier of the secondary forest harvesting costs
 

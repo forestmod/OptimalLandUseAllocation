@@ -48,21 +48,20 @@ out_sparce   = luc_model(ns=201)
 ix_sparce    = 1:(length(out_sparce.support)-150) # index for plotting
 times_sparce = out_sparce.support[ix_sparce] # every 10 years
 @testset "Number of discretization points" begin
-    @test isapprox(base.F[findfirst(t-> t==50,times)],out_dense.F[findfirst(t-> t==50,times_dense)],rtol=0.05)
-    @test isapprox(base.F[findfirst(t-> t==50,times)],out_sparce.F[findfirst(t-> t==50,times_sparce)],rtol=0.05)
     @test isapprox(base.r[findfirst(t-> t==50,times)],out_dense.r[findfirst(t-> t==50,times_dense)],rtol=0.1)
     @test isapprox(base.r[findfirst(t-> t==50,times)],out_sparce.r[findfirst(t-> t==50,times_sparce)],rtol=0.1)
+    @test isapprox(base.F[findfirst(t-> t==50,times)],out_dense.F[findfirst(t-> t==50,times_dense)],rtol=0.05)
+    @test isapprox(base.F[findfirst(t-> t==50,times)],out_sparce.F[findfirst(t-> t==50,times_sparce)],rtol=0.05)
 end
 
 # Graphically...
-plot(times, base.F[1:101], xlabel="years", label="Base time point density (5 y)", title="Forest prim area (stock) under different time densities");
-plot!(times_dense, out_dense.F[1:251], label="Dense time point density (2 y)");
-plot!(times_sparce, out_sparce.F[1:51], label="Sparce time point density (10 y)")
-
 plot(times, base.r[1:101], xlabel="years", label="Base time point density (5 y)", title="SF reg area (flow) under different time densities");
 plot!(times_dense, out_dense.r[1:251], label="Dense time point density (2 y)");
 plot!(times_sparce, out_sparce.r[1:51], label="Sparce time point density (10 y)")
 
+plot(times, base.F[1:101], xlabel="years", label="Base time point density (5 y)", title="Forest prim area (stock) under different time densities");
+plot!(times_dense, out_dense.F[1:251], label="Dense time point density (2 y)");
+plot!(times_sparce, out_sparce.F[1:51], label="Sparce time point density (10 y)")
 
 # ------------------------------------------------------------------------------
 # Test 2: setting no interest rate leads to MSY in secondary forest (density = half the maximum density)
@@ -82,17 +81,60 @@ plot!(times, fill(OLUA.K,ntpoints), lab="Max density")
 # ------------------------------------------------------------------------------
 # Test 3: setting leads to the "eating the cake" model
 
-out = luc_model(σ=0)
+out = luc_model()
 
 # ------------------------------------------------------------------------------
 # Test 4: setting no Sf area change and no harvesting leads SF volumes to the Verhulst model
 
-out = luc_model(bwood_c1=0,σ=0) # No wood benefits leads no harvesting for both PF (so no reg for SF) and SF 
+out = luc_model(bwood_c1=0.01,h₀=0)
 Dsf = out.V ./ out.S 
+
+@testset "No wood benefits lead no harvesting, no area change and SF following the Verhulst model" begin
+  @test isapprox(Dsf[findfirst(t-> t==100,times)],OLUA.K,rtol=0.01)
+  @test isapprox(Dsf[findfirst(t-> t==200,times)],OLUA.K,rtol=0.01)
+  @test isapprox(out.V[findfirst(t-> t==200,times)],OLUA.K*OLUA.S₀,rtol=0.01)
+end
+
+# Graphically...
+
+plot(times, Dsf[ix],   lab = "D: secondary forest density", linecolor="darkseagreen3", xlabel="years", title= "Sec. forest density under no harv and no reg");
+plot!(times, fill(OLUA.K,ntpoints), lab="Max density")
+
+plot(times,out.V[ix], label="V: model output logistic", xlabel="years", title= "Sec. forest volumes under no harv and no reg");
+
+# manually computing the V increase by loop
+var_vol_test(S,V;γ=OLUA.γ,K=OLUA.K) = (V)*γ*(1-(V / (S * K) ))
+step = times[end]/(ntpoints-1)
+ts2 = 0:step:times[end]
+Vtest = copy(OLUA.V₀)
+v_by_step = zeros(length(ts2))
+for (it,t) in enumerate(ts2)
+  v_by_step[it] = Vtest
+  Vtest += var_vol_test(OLUA.S₀,Vtest)*step
+end
+Vtest
+plot!(ts2, collect(v_by_step[i] for i in 1:length(ts2)), label="V: discrete steps logistic" );
+
+# using the true logistic function...
+logistic(x;k,r,x0) = k/(1+((k-x0)/x0)*exp(-r*x))
+plot!(x->logistic(x,k=OLUA.K*OLUA.S₀,r=OLUA.γ,x0=OLUA.V₀),0,times[end], label = "V: true logistic funcion")
+
+
+
+
+
+
+
+
+
 plot(times, out.S[ix], lab = "S: secondary forest area", linecolor="darkseagreen3")
 plot(times, out.V[ix], lab = "V: secondary forest volumes", linecolor="darkseagreen3")
 plot(times, Dsf[ix],   lab = "D: secondary forest density", linecolor="darkseagreen3")
 plot(times, out.h[ix], lab = "h", linecolor="darkseagreen3")
+plot(times, out.r[ix], lab = "r", linecolor="darkseagreen3")
+
+
+
 
 # Test not passed.. this is strange, check why the hell it goes just a bit over K/2 instead of going to full carrying capacity
 # It isn't influenced by the time density

@@ -54,7 +54,9 @@ function luc_model(;
     S₀          = S₀,       # Initial secondary forest area
     A₀          = A₀,       # Initial agricultural area
     V₀          = V₀,       # Initial secondary forest volumes
-    d₀          = d₀,       # First prim for harvesting
+    d₀          = d₀,       # Initial prim for harvesting
+    h₀          = h₀,       # Initial sec for harvesting
+    r₀          = r₀,       # Initial sec for regeneration
     # Options
     optimizer   = optimizer,  # Desired optimizer (solver)
     opt_options = opt_options, # Optimizer options
@@ -130,7 +132,7 @@ function luc_model(;
   @constraint(m, A(0)  == A₀)
   @constraint(m, V(0)  == V₀)
   @constraint(m, d(0)  == d₀)
-  #@constraint(m, h(0)  == 0)
+  @constraint(m, h(0)  == h₀)
   #@constraint(m, r(0)  == 0)
 
 
@@ -138,6 +140,8 @@ function luc_model(;
   @constraint(m, (F+S+A)  == (F₀+S₀+A₀) )
   @constraint(m, d <= F)
   @constraint(m, h <= S)
+  #@constraint(m, h == 0)
+  #@constraint(m, r == 0)
   @constraint(m, r <= d )
 
   # Final conditions...
