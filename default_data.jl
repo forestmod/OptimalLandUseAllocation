@@ -119,7 +119,7 @@ crsf_c1    = 50 * (r₀+h₀) / ((r₀+h₀)^crsf_c2) # Multiplier of the regene
 
 # Options
 optimizer   = Ipopt.Optimizer  # Desired optimizer (solver)
-opt_options = Dict("max_cpu_time" => 20.0)
+opt_options = Dict("max_cpu_time" => 20.0, "print_level" => 3)
 T           = 2000             # Time horizon (years)
 ns          = 401;             # Number of points in the time grid - seems not to influence much the results (good!)
 
