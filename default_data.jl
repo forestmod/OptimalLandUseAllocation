@@ -7,6 +7,8 @@
 # - Forest area (M ha): FAO FRA 2020 report, Brazil (https://www.fao.org/3/ca9976en/ca9976en.pdf), p 24
 # - Forest volumes (M m³): idem, p 44
 # - Agricultural area (M ha): World bank 2020, https://data.worldbank.org/indicator/AG.LND.AGRI.K2?locations=BR
+
+TOT_LAND_INCL_OTH_LAND = 8_515_514 *100 / 1_000_000 # [From km^2 to Mha]
 TOT_LAND = (485_396_011 + 11_223_609 + 2_387_471 * 100) / 1_000_000
 F₀ = 485_396_011.0 / 1_000_000   # Init Primary Forest area [M ha]
 S₀ = 11_223_609 / 1_000_000       # Init Secondary Forest area [M ha]

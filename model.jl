@@ -65,7 +65,7 @@ function luc_model(;
   ) 
 
   # Functions...
-  discount(t; σ=σ)                                                 = exp(-σ*t) # discount function
+  discount(t; σ=σ)                                                 = exp(-σ*t) # t == 0 ? 0.0 : exp(-σ*t) # discount function
   ben_env(F;benv_c1=benv_c1,benv_c2=benv_c2)                       = (benv_c1*F^benv_c2) # Environmental benefits [M$]
   ben_agr(A;bagr_c1=bagr_c1,bagr_c2=bagr_c2)                       = (bagr_c1*A^bagr_c2) # Agricultural use benefits [M$]
   ben_wood(S,V,d,h;bwood_c1=bwood_c1,bwood_c2=bwood_c2,D=D)        = (bwood_c1*(d * D + h * V/S)^bwood_c2) # Wood use benefits [M$]

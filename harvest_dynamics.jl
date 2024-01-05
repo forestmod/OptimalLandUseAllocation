@@ -1,5 +1,8 @@
-# Forest dynamics numerical model
+# # Forest dynamics numerical model
 
+# Literate.markdown("harvest_dynamics.jl", "."; flavor=Literate.CommonMarkFlavor(), execute=true) #src
+
+# ## Setting up the environment / packages...
 cd(@__DIR__)
 using Pkg
 Pkg.activate(".")
@@ -11,37 +14,21 @@ using Markdown
 using Revise
 using Test
 
-# Load the model structure (function "luc_model")
-includet("model.jl")
+# ## Load the model structure (function "luc_model")
+include("model.jl")
 using .OLUA
 
+
 # ------------------------------------------------------------------------------
-# Symbols
-md"""
-
-Abbreviations:
-- `PF`: primary forests
-- `SF`: secondary forests
-- `AG`: agricultural area
-
-## Assumptions
-- h1: Primary forests are in stationary state, i.e. their volume variation is only given by clear cutting and its density `D` is fixed
-- h2: Harvested area of $PF$ can be allocated to either $SF$ or $AG$
-- h3: Harvesting of $SF$ doesn't change its area, i.e. if clear-cut, the area remains $SF$
-- h4: At each moment in time, benefits for the society depend from area of $PF$ (environmental benefits), sum of harvesting volumes of $PF$ and $SF$ (i.e. indifferentiated wood), area of $AG$
-- h5: Costs of harvesting $PF$ are inversely proportional to the area of $PF$
-- h6: The society can "control" the harvesting of primary forest $d$, the harvesting of secondary forest $h$ and the allocation of harvested primary forest
-"""
-
-# Loading the "base" optimisation...
+# ## Compute the "base" optimisation...
 base     = luc_model()
 ix       = 1:(length(base.support)-300) # index for plotting
 times    = base.support[ix] # Every 5 years
 ntpoints = length(times)
-step     = times[end] / (ntpoints-1)
+step     = times[end] / (ntpoints-1) ;
 
 # ------------------------------------------------------------------------------
-# Test 1: using less or more points doesn't influence much the results
+# ## Test 1: discretization choice (using less or more time points) doesn't influence much the results
 out_dense    = luc_model(ns=1001,opt_options = Dict("max_cpu_time" => 60.0))
 ix_dense     = 1:(length(out_dense.support)-750) # index for plotting
 times_dense  = out_dense.support[ix_dense] # every 2 years
@@ -60,9 +47,14 @@ plot(times, base.r[1:101], xlabel="years", label="Base time point density (5 y)"
 plot!(times_dense, out_dense.r[1:251], label="Dense time point density (2 y)");
 plot!(times_sparce, out_sparce.r[1:51], label="Sparce time point density (10 y)")
 
+
 plot(times, base.F[1:101], xlabel="years", label="Base time point density (5 y)", title="Forest prim area (stock) under different time densities");
 plot!(times_dense, out_dense.F[1:251], label="Dense time point density (2 y)");
 plot!(times_sparce, out_sparce.F[1:51], label="Sparce time point density (10 y)")
+
+# Take home:
+# Discretization doesn't significantly influence the nature of the results. All our comparisions of the scneario with base are bade using the same time discretization
+
 
 # ------------------------------------------------------------------------------
 # Test 2: setting no interest rate leads to MSY in secondary forest (density = half the maximum density)
@@ -80,28 +72,27 @@ plot(times, out.V[ix] ./ out.S[ix], lab = "Secondary forest density", xlabel="ye
 plot!(times, fill(OLUA.K,ntpoints), lab="Max density")
 
 # ------------------------------------------------------------------------------
-# Test 3: setting leads to the "eating the cake" model
+# Test 3: setting cost and benefits parameters in order to have no harvesting in SF and no benefits other than timber leads to the "eating the cake" model / Hotelling rule
 
 # The first version is with only benefits, the second one with some harvesting costs
-# The second version has some numerical instability at the beginning
-out1 = luc_model(benv_c1=0.0,bagr_c1=0,chpf_c3=0,chpf_c1=0,crsf_c1=1000,chsf_c1=10000,γ=0) # only benefits
-out2 = luc_model(benv_c1=0.0,bagr_c1=0,chpf_c3=0,chpf_c1=10,chpf_c2=1.2,crsf_c1=1000,chsf_c1=10000,γ=0,d₀=1.13) # with costs
+out1 = luc_model(benv_c1=0.0,bagr_c1=0,chpf_c3=0,chpf_c1=0,crsf_c1=1000,chsf_c1=10000,γ=0) # with only timber benefits
+out2 = luc_model(benv_c1=0.0,bagr_c1=0,chpf_c3=0,chpf_c1=10,chpf_c2=1.2,crsf_c1=1000,chsf_c1=10000,γ=0,d₀=1.13) # with timber benefits and costs
 
 dbw_dV(V,c1=OLUA.bwood_c1,c2=OLUA.bwood_c2) = c1*c2*V^(c2-1) # marginal benetits
-dcw_dV(V,c1=10,c2=1.2) = c1*c2*V^(c2-1) 
+dcw_dV(V,c1=10,c2=1.2) = c1*c2*V^(c2-1) # marginal costs
 
 hv_1 = @. out1.d * OLUA.D + out1.h * out1.V / out1.S
 hv_2 = @. out2.d * OLUA.D + out2.h * out2.V / out2.S
 
-np1 = dbw_dV.(hv_1) # net price
+np1 = dbw_dV.(hv_1) # (net, as no costs) price
 np2 = dbw_dV.(hv_2) .- dcw_dV.(hv_2) # net price
 
-r1a = log(np1[28]/np1[27])/step # growth rate of the price
-r1b = log(np1[25]/np1[20])/(step*5) 
-r2a = log(np2[28]/np2[27])/step # growth rate of the price
+r1a = log(np1[28]/np1[27])/step     # growth rate of the price for 1 y
+r1b = log(np1[25]/np1[20])/(step*5) # growth rate of the price for 5 y
+r2a = log(np2[28]/np2[27])/step 
 r2b = log(np2[25]/np2[20])/(step*5) 
 
-@testset "Checking net price growth following Hotelling rule" begin
+@testset "Checking net price growth follows Hotelling rule" begin
   @test isapprox(r1a,OLUA.σ,rtol=0.01)
   @test isapprox(r1b,OLUA.σ,rtol=0.01)
   @test isapprox(r2a,OLUA.σ,rtol=0.05)
@@ -111,6 +102,10 @@ end
 # Graphically...
 plot(times, np1[ix], lab = "Considering only benefits", xlabel="years", title= "Net price of the timber resource")
 plot!(times, np2[ix], lab = "Considering harvesting costs")
+
+# Take home...
+# The growth rate is the same, just it looks lower
+# The 10k€ choke price that can be seen in the figure is only an artifact derived by the fact that we didn't change the structure of the model for this validation exercise, but just set the secondary forest harvesting costs at 10k€ to effectively inibit any sf harvesting in that price range. 
 
 # ------------------------------------------------------------------------------
 # Test 4: setting no Sf area change and no harvesting leads SF volumes to the Verhulst model
@@ -137,7 +132,7 @@ Vtest = copy(OLUA.V₀)
 v_by_step = zeros(length(ts2))
 for (it,t) in enumerate(ts2)
   v_by_step[it] = Vtest
-  Vtest += var_vol_test(OLUA.S₀,Vtest)*step
+  global Vtest += var_vol_test(OLUA.S₀,Vtest)*step
 end
 Vtest
 plot!(ts2, collect(v_by_step[i] for i in 1:length(ts2)), label="V: discrete steps logistic" );
@@ -150,115 +145,139 @@ plot!(x->logistic(x,k=OLUA.K*OLUA.S₀,r=OLUA.γ,x0=OLUA.V₀),0,times[end], lab
 # ------------------------------------------------------------------------------
 # Base Case Analysis
 
+# Areas..
+plot(times,  base.F[ix], lab = "F: primary forest area", linecolor="darkgreen", xlabel="years", title="Land Areas (base scen)");
+plot!(times, base.S[ix], lab = "S: secondary forest area", linecolor="darkseagreen3");
+plot!(times, base.A[ix], lab = "A: agricultural area",linecolor="sienna")
+
+# Volumes...
+plot(times, base.F[ix] .* OLUA.D, lab = "V (pf): primary forest volumes",linecolor="darkgreen", title="Growing Volumes (base scen)", xlabel="title");
+plot!(times, base.V[ix], lab = "V (sf): secondary forest volumes", linecolor="darkseagreen3");
+plot!(times, base.F[ix] .* OLUA.D .+ base.V[ix],  lab = "TOT V: total forest volumes", linecolor="brown")
+
+# Welfare analysis...
+plot(times,  base.ben_env[ix], lab = "Environmental benefits", linecolor="darkgreen", title="Welfare balance (base scen)"); 
+plot!(times, base.ben_agr[ix], lab = "Agr benefits",linecolor="sienna") ;
+plot!(times, base.ben_wood[ix], lab = "Wood use benefits", linecolor="darkseagreen3");
+plot!(times, base.ben_carbon[ix], lab = "Carbon benefits", linecolor="grey");
+plot!(times, .- base.cost_pfharv[ix], lab = "PF harvesting costs", linecolor="darkgreen");
+plot!(times, .- base.cost_sfharv[ix], lab = "SF harvesting costs", linecolor="darkseagreen3");
+plot!(times, .- base.cost_sfreg[ix], lab = "SF regeneration costs",linecolor="sienna")
+
+plot(times[1:101], base.welfare[1:101], lab = "Total welfare (base scen)", ylims=(0,1E6) )
 
 
+# ------------------------------------------------------------------------------
+# Scen no_env_ben: PF environmental benefits not considered
+
+out = luc_model(benv_c1=0.0)
+
+plot(times, base.F[ix], lab = "F - base", linecolor="darkgreen", xlabel="years", title="Land allocation under no env benefits");
+plot!(times, out.F[ix], lab = "F - no_env_ben", linecolor="darkgreen", ls=:dot);
+plot!(times, base.S[ix], lab = "S - base", linecolor="darkseagreen3");
+plot!(times, out.S[ix], lab = "S - no_env_ben", linecolor="darkseagreen3", ls=:dot);
+plot!(times, base.A[ix], lab = "A - base", linecolor="sienna");
+plot!(times, out.A[ix], lab = "A - no_env_ben", linecolor="sienna", ls=:dot)
+
+#plot(times, base.V[ix]./ base.S[ix],   lab = "D: secondary forest density", linecolor="darkseagreen3")
+#plot!(times, out.V[ix] ./ out.S[ix],   lab = "D: secondary forest density", linecolor="darkseagreen3", ls=:dot)
 
 
+# Take home:
+# Non considering environmental benefits would, as expect, largelly faster the deforestation of primary forests. Interesting, the increased freed areas would largelly be allocated to agriculture, as the deforestation would imply larger supply of timber that would not benefits the secondary forests (our timber benefits function is concave, and the timber from primary and secondary forest is a completelly homogeneous product)
 
 
+# ------------------------------------------------------------------------------
+# Scen with_carb_ben_1: Carbon benefits (storage) accounted for (constant carbon price)
+out = luc_model(bc_c1=100.0)
 
 
-plot(times, out.S[ix], lab = "S: secondary forest area", linecolor="darkseagreen3")
-plot(times, out.V[ix], lab = "V: secondary forest volumes", linecolor="darkseagreen3")
-plot(times, Dsf[ix],   lab = "D: secondary forest density", linecolor="darkseagreen3")
-plot(times, out.h[ix], lab = "h", linecolor="darkseagreen3")
-plot(times, out.r[ix], lab = "r", linecolor="darkseagreen3")
+plot(times, base.F[ix], lab = "F - base", linecolor="darkgreen", xlabel="years", title="Land allocation whith fixed carb benefits");
+plot!(times, out.F[ix], lab = "F - with_carb_ben_1", linecolor="darkgreen", ls=:dot);
+plot!(times, base.S[ix], lab = "S - base", linecolor="darkseagreen3");
+plot!(times, out.S[ix], lab = "S - with_carb_ben_1", linecolor="darkseagreen3", ls=:dot);
+plot!(times, base.A[ix], lab = "A - base", linecolor="sienna");
+plot!(times, out.A[ix], lab = "A - with_carb_ben_1", linecolor="sienna", ls=:dot)
+
+plot(times, base.V[ix]./ base.S[ix],   lab = "base", linecolor="darkseagreen3", title="SF density");
+plot!(times, out.V[ix] ./ out.S[ix],   lab = "with_carb_ben_1", linecolor="darkseagreen3", ls=:dot)
+
+# Take home:
+# Interesting, because the maximum density of secondary forest is (not much) higher than primary forests, considering carbon value for timber sequestration would accellerate deforestation in favour of secondary forests
+# In other words, as feared by some, carbon payments for forest sequestration could indeed favour monospecific plantations
 
 
+# ------------------------------------------------------------------------------
+# Scen with_carb_ben_2: Carbon benefits (storage) accounted for (with growing carbon price)
+out = luc_model(bc_c1=100.0,bc_c2=(OLUA.σ-0.005)) # setting bc_c2=OLUA.σ doesn't solve
+
+plot(times, base.F[ix], lab = "F - base", linecolor="darkgreen", xlabel="years", title="Land allocation whith increasing carb benefits");
+plot!(times, out.F[ix], lab = "F - with_carb_ben_2", linecolor="darkgreen", ls=:dot);
+plot!(times, base.S[ix], lab = "S - base", linecolor="darkseagreen3");
+plot!(times, out.S[ix], lab = "S - with_carb_ben_2", linecolor="darkseagreen3", ls=:dot);
+plot!(times, base.A[ix], lab = "A - base", linecolor="sienna");
+plot!(times, out.A[ix], lab = "A - with_carb_ben_2", linecolor="sienna", ls=:dot)
+
+plot(times, base.V[ix]./ base.S[ix],   lab = "base", linecolor="darkseagreen3", title="SF density");
+plot!(times, out.V[ix] ./ out.S[ix],   lab = "with_carb_ben_2", linecolor="darkseagreen3", ls=:dot)
+
+# Take home:
+# Not what I did expected. I did expect that, becasue when you have to repay it is more expensive, it doesn't become appropriate to storage carbon.
+# Instead it looks like it is just an increase version of the with_carb_ben_2 scenario
 
 
-# Test not passed.. this is strange, check why the hell it goes just a bit over K/2 instead of going to full carrying capacity
-# It isn't influenced by the time density
+# ------------------------------------------------------------------------------
+# Scen incr_timber_demand: Increased benefits of timber resources
+out = luc_model(bwood_c1=OLUA.bwood_c1*5)
+
+plot(times, base.F[ix], lab = "F - base", linecolor="darkgreen", xlabel="years", title="Land allocation whith increasing timber demand");
+plot!(times, out.F[ix], lab = "F - incr_timber_demand", linecolor="darkgreen", ls=:dot);
+plot!(times, base.S[ix], lab = "S - base", linecolor="darkseagreen3");
+plot!(times, out.S[ix], lab = "S - incr_timber_demand", linecolor="darkseagreen3", ls=:dot);
+plot!(times, base.A[ix], lab = "A - base", linecolor="sienna");
+plot!(times, out.A[ix], lab = "A - incr_timber_demand", linecolor="sienna", ls=:dot)
+
+plot(times, base.V[ix]./ base.S[ix],   lab = "base", linecolor="darkseagreen3", title="SF density");
+plot!(times, out.V[ix] ./ out.S[ix],   lab = "incr_timber_demand", linecolor="darkseagreen3", ls=:dot)
+
+# Take home:
+# Increased timber demand would favour the switch from PF to SF
+
+# ------------------------------------------------------------------------------
+# Scen restricted_pf_harv: Restricted primary forest harvesting
+out = luc_model(chpf_c1=OLUA.chpf_c1*5)
+
+plot(times, base.F[ix], lab = "F - base", linecolor="darkgreen", xlabel="years", title="Land allocation whith PF harv restrictions");
+plot!(times, out.F[ix], lab = "F - restricted_pf_harv", linecolor="darkgreen", ls=:dot);
+plot!(times, base.S[ix], lab = "S - base", linecolor="darkseagreen3");
+plot!(times, out.S[ix], lab = "S - restricted_pf_harv", linecolor="darkseagreen3", ls=:dot);
+plot!(times, base.A[ix], lab = "A - base", linecolor="sienna");
+plot!(times, out.A[ix], lab = "A - restricted_pf_harv", linecolor="sienna", ls=:dot)
+
+plot(times, base.V[ix]./ base.S[ix],   lab = "base", linecolor="darkseagreen3", title="SF density");
+plot!(times, out.V[ix] ./ out.S[ix],   lab = "restricted_pf_harv", linecolor="darkseagreen3", ls=:dot)
 
 
-plot(times,  out.F[ix], lab = "F: primary forest area", linecolor="darkgreen", title="Land Areas")
-plot!(times, out.S[ix], lab = "S: secondary forest area", linecolor="darkseagreen3")
-plot!(times, out.A[ix], lab = "A: agricultural area",linecolor="sienna")
-
-plot(times,  out.d[ix], lab = "d: primary forest harvested area", linecolor="darkgreen", title="Land Variations")
-plot!(times, out.r[ix], lab = "r: secondary forest regenerated area", linecolor="darkseagreen3")
-plot!(times, out.d[ix] - out.r[ix], lab = "new agricultural area", linecolor="sienna")
+plot(times, base.h[ix] .* base.V[ix]./ base.S[ix],   lab = "base", linecolor="darkseagreen3", title="SF hV");
+plot!(times, out.h[ix] .* out.V[ix] ./ out.S[ix],   lab = "restricted_pf_harv", linecolor="darkseagreen3", ls=:dot)
 
 
-plot(times, out.F[ix] .* OLUA.D, lab = "V (pf): primary forest volumes",linecolor="darkgreen", title="Growing Volumes")
-plot!(times, out.V[ix], lab = "V: secondary forest volumes", linecolor="darkseagreen3")
-# 20230913: Checked by setting dA_sf = 0 and dV_sf only to the natural dynamics (removing harvesting) that the path of V_opt_sf follows the logistic function with the given parameters 
-plot(times, out.F[ix] .* OLUA.D .+ out.V[ix],  lab = "TOT V: total forest volumes", linecolor="darkseagreen3")
+# ------------------------------------------------------------------------------
+# Scen lower_disc_rate: Decreasaed discount rate
+out = luc_model(σ=OLUA.σ-0.01)
+
+plot(times, base.F[ix], lab = "F - base", linecolor="darkgreen", xlabel="years", title="Land allocation under lower discount rate");
+plot!(times, out.F[ix], lab = "F - lower_disc_rate", linecolor="darkgreen", ls=:dot);
+plot!(times, base.S[ix], lab = "S - base", linecolor="darkseagreen3");
+plot!(times, out.S[ix], lab = "S - lower_disc_rate", linecolor="darkseagreen3", ls=:dot);
+plot!(times, base.A[ix], lab = "A - base", linecolor="sienna");
+plot!(times, out.A[ix], lab = "A - lower_disc_rate", linecolor="sienna", ls=:dot)
+
+plot(times, base.V[ix]./ base.S[ix],   lab = "base", linecolor="darkseagreen3", title="SF density");
+plot!(times, out.V[ix] ./ out.S[ix],   lab = "lower_disc_rate", linecolor="darkseagreen3", ls=:dot)
 
 
-
-
-plot(times,  out.d[ix], lab = "d: primary forest harvested area", linecolor="darkgreen", title="Distribution of Harvested areas")
-plot!(times, out.h[ix], lab = "h: secondary forest harvested area",linecolor="darkseagreen3")
-
-
-
-plot(times,  out.d[ix] .* OLUA.D, lab = "hV_pf: primary forest harvested volumes", linecolor="darkgreen", title="Distribution of Harvested volumes")
-plot!(times, out.h[ix] .* out.V[ix] ./ out.S[ix], lab = "hV_sf: secondary forest harvested volumes", linecolor="darkseagreen3")
-
-plot!(times, out.d[ix] .* OLUA.D .+ out.h[ix] .* out.V[ix] ./ out.S[ix], lab = "hV: total forest harvested volumes", linecolor="darkseagreen3")
-
-plot(times, out.V[ix] ./ out.S[ix], lab = "Secondary forest density", linecolor="darkseagreen3", title= "Secondary forest density")
-
-
-plot(times,  out.ben_env[ix], lab = "Environmental benefits", linecolor="darkgreen", title="Benefits") 
-plot!(times, out.ben_agr[ix], lab = "Agr benefits",linecolor="sienna") 
-plot!(times, out.ben_wood[ix], lab = "Wood use benefits", linecolor="darkseagreen3")
-plot!(times, out.ben_carbon[ix], lab = "Carbon benefits", linecolor="grey")
-plot!(times, .- out.cost_pfharv[ix], lab = "PF harvesting costs", linecolor="darkgreen")
-plot!(times, .- out.cost_sfharv[ix], lab = "SF harvesting costs", linecolor="darkseagreen3")
-plot!(times, .- out.cost_sfreg[ix], lab = "SF regeneration costs",linecolor="sienna")
-
-plot(times, out.welfare[ix], lab = "Total welfare") 
-
-out_msy = luc_model(σ  = 0)
-plot(times,  out.V[ix] ./ out.S[ix], lab = "BAU", linecolor="darkseagreen3", title="D: secondary forest density")
-plot!(times, out_msy.V[ix] ./ out_msy.S[ix], lab = "Increased env benefits", linecolor="darkseagreen3", ls=:dot)
-
-
-
-# Increase of Environmental Benefits
-
-out_benv = luc_model(benv_c1 = OLUA.benv_c1*1.5)
-plot(times,  out.F[ix], lab = "BAU", linecolor="darkgreen", title="F: primary forest area")
-plot!(times,  out_benv.F[ix], lab = "Increased env benefits", linecolor="darkgreen",ls=:dot )
-
-plot(times, out.S[ix], lab = "BAU", linecolor="darkseagreen3", title="S: secondary forest area")
-plot!(times, out_benv.S[ix], lab = "Increased env benefits", linecolor="darkseagreen3", ls=:dot)
-
-plot(times, out.A[ix], lab = "BAU", linecolor="sienna", title="A: agricultural area")
-plot!(times, out_benv.A[ix], lab = "Increased env benefits", linecolor="sienna", ls=:dot)
-
-
-plot(times, out.h[ix] .* out.V[ix] ./ out.S[ix], lab = "BAU", linecolor="darkseagreen3", title="hV_sf: secondary forest harvested volumes")
-plot!(times, out_benv.h[ix] .* out_benv.V[ix] ./ out_benv.S[ix], lab = "Increased env benefits", linecolor="darkseagreen3", ls=:dot)
-
-plot(times,  out.V[ix] ./ out.S[ix], lab = "BAU", linecolor="darkseagreen3", title="D: secondary forest density")
-plot!(times, out_benv.V[ix] ./ out_benv.S[ix], lab = "Increased env benefits", linecolor="darkseagreen3", ls=:dot)
-
-
-
-plot(times,  out.F[ix], lab = "F: primary forest area")
-plot!(times,  out_fb.F[ix], lab = "F: primary forest area (increased forest benefits)")
-
-plot(times, out.S[ix], lab = "S: secondary forest area")
-plot!(times, out_fb.S[ix], lab = "S: secondary forest area (increased forest benefits)")
-
-plot(times, out.A[ix], lab = "A: agricultural area")
-plot!(times, out_fb.A[ix], lab = "A: agricultural area (increased forest benefits)")
-
-
-
-
-
-ben_env_temp(F;benv_c1=benv_c1,benv_c2=benv_c2) = benv_c1*F^benv_c2 
-
-σt = 0.03
-
-ix = 1:(length(out.support)-180) # index for plotting
-times = out.support[ix]
-sum( ben_env_temp(out.F[i])*exp(-times[i]*σt ) for i in ix )
-sum( ben_env_temp(out.F[1])*exp(-times[i]*σt ) for i in ix )
-
-[out.F[i] >= out.F[1] for i in ix]
+# Take home:
+# Lower discount rate surprisily has a positive effect in reducing deforestation, primarily by reducing allocation to agricultural areas. Even with less avilable area from the less deforestation, SF area increases.
+# Also, we note that the eq density of SF, as the discount rate decrease, move up toward the MSY. We find again a well know principle in capital standard capital theory and nat res economics: as harvesting SF doesn't depend from SF stocks, the intertemporal equilibrium is obtained when the rate of biological growth (dG/dV) equals the discount rate (PERMAN, Natural resource and environmental economics, 4th ed., p. 583) , and when this is zero this corresponds to the MSY, as we saw in the validation section.
 
