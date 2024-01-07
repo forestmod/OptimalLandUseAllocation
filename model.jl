@@ -9,8 +9,37 @@ using Revise
 # Load exoxes parameters and options
 include("default_data.jl")
 
-export luc_model
+export luc_model, welfare,
+       ben_env, ben_agr, ben_wood, ben_carbon,
+       cost_pfharv, cost_sfharv, cost_sfreg
 
+ben_env(F;benv_c1=benv_c1,benv_c2=benv_c2)                       = (benv_c1*F^benv_c2) # Environmental benefits [M$]
+ben_agr(A;bagr_c1=bagr_c1,bagr_c2=bagr_c2)                       = (bagr_c1*A^bagr_c2) # Agricultural use benefits [M$]
+ben_wood(S,V,d,h;bwood_c1=bwood_c1,bwood_c2=bwood_c2,D=D)        = (bwood_c1*(d * D + h * V/S)^bwood_c2) # Wood use benefits [M$]
+ben_carbon(S,V,d,h,t; D=D,γ=γ,K=K,bc_c1=bc_c1,bc_c2=bc_c2)       = bc_c1*exp(bc_c2 * t) * (((V)*γ*(1-(V / (S * K) )) - h * (V/S)) - (d * D )  ) # Carbon benefits [M$] - here we don't yeat know var_vol_sf, so rewriting it explicitly
+cost_pfharv(F,d;chpf_c1=chpf_c1,chpf_c2=chpf_c2,chpf_c3=chpf_c3) = (chpf_c1 * (d*D)^chpf_c2 * F^chpf_c3) # Harvesting primary forest costs [€]
+cost_sfharv(S,V,h;chsf_c1=chsf_c1,chsf_c2=chsf_c2)               = (chsf_c1 * (h * V/S)^chsf_c2)  # Harvesting secondary forest costs [€]
+cost_sfreg(r,h;crsf_c1=crsf_c1,crsf_c2=crsf_c2)                  = (crsf_c1 * (r+h) ^ crsf_c2)  # Regeneration of secondary forest costs [€]
+
+function welfare(F,S,A,V,d,h,r,t;D=D,γ=γ,K=K,
+                benv_c1=benv_c1,benv_c2=benv_c2,
+                bagr_c1=bagr_c1,bagr_c2=bagr_c2,
+                bwood_c1=bwood_c1,bwood_c2=bwood_c2,
+                bc_c1=bc_c1,bc_c2=bc_c2,
+                chpf_c1=chpf_c1,chpf_c2=chpf_c2,chpf_c3=chpf_c3,
+                chsf_c1=chsf_c1,chsf_c2=chsf_c2,
+                crsf_c1=crsf_c1,crsf_c2=crsf_c2
+  )
+  return (
+    ben_env(F;benv_c1=benv_c1,benv_c2=benv_c2)
+  + ben_agr(A;bagr_c1=bagr_c1,bagr_c2=bagr_c2)
+  + ben_wood(S,V,d,h;bwood_c1=bwood_c1,bwood_c2=bwood_c2,D=D) 
+  + ben_carbon(S,V,d,h,t;D=D,γ=γ,K=K,bc_c1=bc_c1,bc_c2=bc_c2)
+  - cost_pfharv(F,d;chpf_c1=chpf_c1,chpf_c2=chpf_c2,chpf_c3=chpf_c3)
+  - cost_sfharv(S,V,h;chsf_c1=chsf_c1,chsf_c2=chsf_c2)
+  - cost_sfreg(r,h;crsf_c1=crsf_c1,crsf_c2=crsf_c2)
+  )
+end 
 
 md"""
 
@@ -66,52 +95,13 @@ function luc_model(;
 
   # Functions...
   discount(t; σ=σ)                                                 = exp(-σ*t) # t == 0 ? 0.0 : exp(-σ*t) # discount function
-  ben_env(F;benv_c1=benv_c1,benv_c2=benv_c2)                       = (benv_c1*F^benv_c2) # Environmental benefits [M$]
-  ben_agr(A;bagr_c1=bagr_c1,bagr_c2=bagr_c2)                       = (bagr_c1*A^bagr_c2) # Agricultural use benefits [M$]
-  ben_wood(S,V,d,h;bwood_c1=bwood_c1,bwood_c2=bwood_c2,D=D)        = (bwood_c1*(d * D + h * V/S)^bwood_c2) # Wood use benefits [M$]
-  ben_carbon(S,V,d,h,t; D=D,γ=γ,K=K,bc_c1=bc_c1,bc_c2=bc_c2)       = bc_c1*exp(bc_c2 * t) * (var_vol_sf(S,V,h,γ=γ,K=K) - (d * D )  ) # Carbon benefits [M$]
-  cost_pfharv(F,d;chpf_c1=chpf_c1,chpf_c2=chpf_c2,chpf_c3=chpf_c3) = (chpf_c1 * (d*D)^chpf_c2 * F^chpf_c3) # Harvesting primary forest costs [€]
-  cost_sfharv(S,V,h;chsf_c1=chsf_c1,chsf_c2=chsf_c2)               = (chsf_c1 * (h * V/S)^chsf_c2)  # Harvesting secondary forest costs [€]
-  cost_sfreg(r,h;crsf_c1=crsf_c1,crsf_c2=crsf_c2)                  = (crsf_c1 * (r+h) ^ crsf_c2)  # Regeneration of secondary forest costs [€]
-  
 
-  function welfare(F,S,A,V,d,h,r,t;)
-      return (
-        ben_env(F;)
-      + ben_agr(A;)
-      + ben_wood(S,V,d,h;) 
-      + ben_carbon(S,V,d,h,t)
-      - cost_pfharv(F,d;)
-      - cost_sfharv(S,V,h;)
-      - cost_sfreg(r,h)
-      )
-  end
 
   # Definition of the equations of motion of the state variables
   var_area_pf(d)          = -d
   var_area_sf(r)          = r
   var_area_ag(d,r)        = d - r
   var_vol_sf(S,V,h;γ=γ,K=K) = (V)*γ*(1-(V / (S * K) )) - h * (V/S) # Mm³ See https://en.wikipedia.org/wiki/Logistic_function#In_ecology:_modeling_population_growth (the logistic growth is in terms of density: (V_sf/A_sf)*γ*(1-((V_sf/A_sf) /maxD ))*A_sf -hV_sf )
-
-
-  # To check only...
-  #step = 1
-  #ts = 1:step:800
-  #acost = 2
-  #v0 = 450 * acost
-  #hVcost = 3 * acost
-  #Vtest = copy(v0)
-  #v_by_step = zeros(length(ts))
-  #for (it,t) in enumerate(ts)
-  #  #println(it)
-  #  v_by_step[it] = Vtest
-  #  hA_step = hVcost * acost/Vtest 
-  #  Vtest += var_vol_sf(acost,Vtest,hA_step*step)*step
-  #end
-  #Vtest
-  #plot(ts, collect(v_by_step[i] for i in 1:length(ts))  )
-
-
 
   solver = optimizer_with_attributes(optimizer, opt_options...)
   m      = InfiniteModel(solver)
@@ -154,7 +144,18 @@ function luc_model(;
   @constraint(m, dV_sf, deriv(V, t) == var_vol_sf(S,V,h))
 
 
-  @objective(m, Max, integral(welfare(F,S,A,V,d,h,r,t), t, weight_func = discount))
+  @objective(m, Max, integral(
+    welfare(F,S,A,V,d,h,r,t;
+            D=D,γ=γ,K=K,
+            benv_c1=benv_c1,benv_c2=benv_c2,
+            bagr_c1=bagr_c1,bagr_c2=bagr_c2,
+            bwood_c1=bwood_c1,bwood_c2=bwood_c2,
+            bc_c1=bc_c1,bc_c2=bc_c2,
+            chpf_c1=chpf_c1,chpf_c2=chpf_c2,chpf_c3=chpf_c3,
+            chsf_c1=chsf_c1,chsf_c2=chsf_c2,
+            crsf_c1=crsf_c1,crsf_c2=crsf_c2),
+    t, weight_func = discount)
+  )
 
   # Optimisation and retrival of optimal data/time path
   optimize!(m)
@@ -168,7 +169,10 @@ function luc_model(;
   h_opt    = value.(h)
   r_opt    = value.(r)
   
-  pA       = dual.(dA_pf)
+  pF       = dual.(dA_pf)
+  pS       = dual.(dA_sf)
+  pA       = dual.(dA_ag)
+  pV       = dual.(dV_sf)
 
   ts       = supports(t)
   opt_obj  = objective_value(m) 
@@ -185,7 +189,7 @@ function luc_model(;
           obj=opt_obj, support= ts, status=status,
           ben_env = ben_env_opt, ben_agr = ben_agr_opt, ben_wood= ben_wood_opt, ben_carbon = ben_carbon_opt,
           cost_pfharv = cost_pfharv_opt, cost_sfharv = cost_sfharv_opt, cost_sfreg = cost_sfreg_opt,
-          welfare = welfare_opt
+          welfare = welfare_opt, pF=pF, pS=pS, pA=pA, pV=pV
           )
 end
 

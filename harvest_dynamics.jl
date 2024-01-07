@@ -15,7 +15,7 @@ using Revise
 using Test
 
 # ### Load the model structure (function "luc_model")
-include("model.jl")
+includet("model.jl")
 using .OLUA
 
 
@@ -159,6 +159,14 @@ plot(times,  base.F[ix], lab = "F: primary forest area", linecolor="darkgreen", 
 plot!(times, base.S[ix], lab = "S: secondary forest area", linecolor="darkseagreen3");
 plot!(times, base.A[ix], lab = "A: agricultural area",linecolor="sienna")
 
+# Shadow prices..
+plot(times[2:end],  base.pF[ix[2:end]], lab = "pF: primary forest area price", linecolor="darkgreen", xlabel="years", title="LAnd shadow prices (base scen)");
+plot!(times[2:end], base.pS[ix[2:end]], lab = "pS: secondary forest area price", linecolor="darkseagreen3");
+plot!(times[2:end], base.pA[ix[2:end]], lab = "pA: agricultural area price",linecolor="sienna");
+plot!(times[2:end], base.pV[ix[2:end]], lab = "pV: secondary forest timber volumes price",linecolor="lightgreen")
+
+# Note that the s.p. of primary forest is negative, because we are constraining our model to a fixed area, so 1 ha more of primary prodict means 1 ha less of secondary forest or agricultural area
+
 # Volumes...
 plot(times, base.F[ix] .* OLUA.D, lab = "V (pf): primary forest volumes",linecolor="darkgreen", title="Growing Volumes (base scen)", xlabel="title");
 plot!(times, base.V[ix], lab = "V (sf): secondary forest volumes", linecolor="darkseagreen3");
@@ -265,7 +273,7 @@ plot!(times, out.h[ix] .* out.V[ix] ./ out.S[ix],   lab = "restricted_pf_harv", 
 
 
 # ------------------------------------------------------------------------------
-# #### Scen 3: `lower_disc_rate`: Decreasaed discount rate
+# #### Scen 6: `lower_disc_rate`: Decreased discount rate
 out = luc_model(σ=OLUA.σ-0.01)
 
 plot(times, base.F[ix], lab = "F - base", linewidth = 2, linecolor="darkgreen", xlabel="years", title="Land allocation under lower discount rate");
@@ -281,4 +289,24 @@ plot!(times, out.V[ix] ./ out.S[ix],   lab = "lower_disc_rate", linecolor="darks
 # **Take home**
 # Lower discount rate surprisily has a positive effect in reducing deforestation, primarily by reducing allocation to agricultural areas. Even with less avilable area from the less deforestation, SF area increases.
 # Also, we note that the eq density of SF, as the discount rate decrease, move up toward the MSY. We find again a well know principle in capital standard capital theory and nat res economics: as harvesting SF doesn't depend from SF stocks, the intertemporal equilibrium is obtained when the rate of biological growth (dG/dV) equals the discount rate (PERMAN, Natural resource and environmental economics, 4th ed., p. 583) , and when this is zero this corresponds to the MSY, as we saw in the validation section.
+
+
+# ------------------------------------------------------------------------------
+# #### Scen 7: `cc_effect`: Climate change effects (reduced forest growth rate)
+out = luc_model(γ = OLUA.γ-0.02)
+
+# In our simple model we model CC effects on the forest (mortality and growth) as a reduction of the growth rate of the overall secondary forest aggregate density. We do not consider here the effects on the primary forest nor on the agricultural sector.
+
+plot(times, base.F[ix], lab = "F - base", linewidth = 2, linecolor="darkgreen", xlabel="years", title="Land allocation whith cc effect");
+plot!(times, out.F[ix], lab = "F - cc_effect", linecolor="darkgreen", ls=:dot);
+plot!(times, base.S[ix], lab = "S - base", linewidth = 2, linecolor="darkseagreen3");
+plot!(times, out.S[ix], lab = "S - cc_effect", linecolor="darkseagreen3", ls=:dot);
+plot!(times, base.A[ix], lab = "A - base", linewidth = 2, linecolor="sienna");
+plot!(times, out.A[ix], lab = "A - cc_effect", linecolor="sienna", ls=:dot)
+#-
+plot(times, base.h[ix] .* base.V[ix]./ base.S[ix],   lab = "base", linewidth = 2, linecolor="darkseagreen3", title="SF hV");
+plot!(times, out.h[ix] .* out.V[ix] ./ out.S[ix],   lab = "cc_effect", linecolor="darkseagreen3", ls=:dot)
+
+# **Take home**
+# Even thought the modelled effect concerns only the secondary forest, we see that deforestation of primary forest is also impacted, most likely this is a spillover effect due to the need to compensate the lower harvesting volumes coming from secondary forests. 
 
