@@ -22,7 +22,7 @@ using .OLUA
 # ------------------------------------------------------------------------------
 # ### Compute the "base" optimisation...
 base     = luc_model() # compute the optimization for the "base" scenario
-ix       = 2:(length(base.support)-300) # index for plotting (we discard the distant future and the first year that is not part of the optimization)
+ix       = 2:(length(base.support)-320) # index for plotting (we discard the distant future and the first year that is not part of the optimization)
 times    = base.support[ix] 
 ntpoints = length(times)
 step     = times[end] / (ntpoints) ; # We choosen to discretize every 5 years
@@ -36,10 +36,10 @@ step     = times[end] / (ntpoints) ; # We choosen to discretize every 5 years
 # ------------------------------------------------------------------------------
 # #### Test 1: discretization choice (using less or more time points) doesn't influence much the results
 out_dense    = luc_model(ns=1001,opt_options = Dict("max_cpu_time" => 60.0))
-ix_dense     = 2:(length(out_dense.support)-750) # index for plotting
+ix_dense     = 2:(length(out_dense.support)-800) # index for plotting
 times_dense  = out_dense.support[ix_dense] # every 2 years
 out_sparce   = luc_model(ns=201)
-ix_sparce    = 2:(length(out_sparce.support)-150) # index for plotting
+ix_sparce    = 2:(length(out_sparce.support)-160) # index for plotting
 times_sparce = out_sparce.support[ix_sparce] # every 10 years
 @testset "Number of discretization points" begin
     @test isapprox(base.r[findfirst(t-> t==80,times)],out_dense.r[findfirst(t-> t==80,times_dense)],atol=0.04)
