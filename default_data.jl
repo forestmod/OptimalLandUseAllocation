@@ -10,11 +10,11 @@
 
 TOT_LAND_INCL_OTH_LAND = 8_515_514 *100 / 1_000_000 # [From km^2 to Mha]
 TOT_LAND = (485_396_011 + 11_223_609 + 2_387_471 * 100) / 1_000_000
-F₀ = 485_396_011.0 / 1_000_000   # Init Primary Forest area [M ha]
+F₀ = 485_396_011.0 / 1_000_000    # Init Primary Forest area [M ha]
 S₀ = 11_223_609 / 1_000_000       # Init Secondary Forest area [M ha]
 A₀ = 2_387_471 * 100  / 1_000_000 # Init Agricultural area [M ha]
 V₀ = 3_056_570_000 / 1_000_000    # Init timber volumes of secondary forests [M m^3]
-d₀ = F₀/1000        # Init prim forest harvesting area (used only to compute parameter and start value in the sense of optimisation start) [M ha]
+d₀ = F₀/1000          # Init prim forest harvesting area (used only to compute parameter and start value in the sense of optimisation start) [M ha]
 h₀ = S₀/100           # Init sec forest harvesting area (used only to compute parameter and start value in the sense of optimisation start)  [M ha]
 r₀ = 0.5 * d₀         # Init sec forest regeneration area (used only to compute parameter and start value in the sense of optimisation start)  [M ha]
 

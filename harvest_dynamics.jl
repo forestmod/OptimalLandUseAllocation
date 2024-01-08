@@ -22,10 +22,10 @@ using .OLUA
 # ------------------------------------------------------------------------------
 # ### Compute the "base" optimisation...
 base     = luc_model() # compute the optimization for the "base" scenario
-ix       = 1:(length(base.support)-300) # index for plotting (we discard the distant future)
+ix       = 2:(length(base.support)-300) # index for plotting (we discard the distant future and the first year that is not part of the optimization)
 times    = base.support[ix] 
 ntpoints = length(times)
-step     = times[end] / (ntpoints-1) ; # We choosen to discretize every 5 years
+step     = times[end] / (ntpoints) ; # We choosen to discretize every 5 years
 
 # ------------------------------------------------------------------------------
 # ### Model validation...
@@ -36,26 +36,26 @@ step     = times[end] / (ntpoints-1) ; # We choosen to discretize every 5 years
 # ------------------------------------------------------------------------------
 # #### Test 1: discretization choice (using less or more time points) doesn't influence much the results
 out_dense    = luc_model(ns=1001,opt_options = Dict("max_cpu_time" => 60.0))
-ix_dense     = 1:(length(out_dense.support)-750) # index for plotting
+ix_dense     = 2:(length(out_dense.support)-750) # index for plotting
 times_dense  = out_dense.support[ix_dense] # every 2 years
 out_sparce   = luc_model(ns=201)
-ix_sparce    = 1:(length(out_sparce.support)-150) # index for plotting
+ix_sparce    = 2:(length(out_sparce.support)-150) # index for plotting
 times_sparce = out_sparce.support[ix_sparce] # every 10 years
 @testset "Number of discretization points" begin
-    @test isapprox(base.r[findfirst(t-> t==80,times)],out_dense.r[findfirst(t-> t==80,times_dense)],rtol=0.1)
-    @test isapprox(base.r[findfirst(t-> t==80,times)],out_sparce.r[findfirst(t-> t==80,times_sparce)],rtol=0.15)
+    @test isapprox(base.r[findfirst(t-> t==80,times)],out_dense.r[findfirst(t-> t==80,times_dense)],atol=0.04)
+    @test isapprox(base.r[findfirst(t-> t==80,times)],out_sparce.r[findfirst(t-> t==80,times_sparce)],atol=0.04)
     @test isapprox(base.F[findfirst(t-> t==80,times)],out_dense.F[findfirst(t-> t==80,times_dense)],rtol=0.05)
     @test isapprox(base.F[findfirst(t-> t==80,times)],out_sparce.F[findfirst(t-> t==80,times_sparce)],rtol=0.05)
 end
 
 # Graphically...
-plot(times, base.r[1:101], xlabel="years", label="Base time point density (5 y)", title="SF reg area (flow) under different time densities");
-plot!(times_dense, out_dense.r[1:251], label="Dense time point density (2 y)");
-plot!(times_sparce, out_sparce.r[1:51], label="Sparce time point density (10 y)")
+plot(times, base.r[ix], xlabel="years", label="Base time point density (5 y)", title="SF reg area (flow) under different time densities");
+plot!(times_dense, out_dense.r[ix_dense], label="Dense time point density (2 y)");
+plot!(times_sparce, out_sparce.r[ix_sparce], label="Sparce time point density (10 y)")
 #-
-plot(times, base.F[1:101], xlabel="years", label="Base time point density (5 y)", title="Forest prim area (stock) under different time densities");
-plot!(times_dense, out_dense.F[1:251], label="Dense time point density (2 y)");
-plot!(times_sparce, out_sparce.F[1:51], label="Sparce time point density (10 y)")
+plot(times, base.F[ix], xlabel="years", label="Base time point density (5 y)", title="Forest prim area (stock) under different time densities");
+plot!(times_dense, out_dense.F[ix_dense], label="Dense time point density (2 y)");
+plot!(times_sparce, out_sparce.F[ix_sparce], label="Sparce time point density (10 y)")
 
 # **Take home**
 # Altought for stock variables being cumulative,we have some differences, discretization doesn't significantly influence the nature of the results. All our comparisions of the scenario with base are made using the same time discretization.
@@ -83,7 +83,7 @@ plot!(times, fill(OLUA.K,ntpoints), lab="Max density")
 
 # The first version is with only benefits, the second one with some harvesting costs
 out1 = luc_model(benv_c1=0.0,bagr_c1=0,chpf_c3=0,chpf_c1=0,crsf_c1=1000,chsf_c1=10000,γ=0) # with only timber benefits
-out2 = luc_model(benv_c1=0.0,bagr_c1=0,chpf_c3=0,chpf_c1=10,chpf_c2=1.2,crsf_c1=1000,chsf_c1=10000,γ=0,d₀=1.13) # with timber benefits and costs
+out2 = luc_model(benv_c1=0.0,bagr_c1=0,chpf_c3=0,chpf_c1=10,chpf_c2=1.2,crsf_c1=1000,chsf_c1=10000,γ=0)# d₀=1.13) # with timber benefits and costs
 
 dbw_dV(V,c1=OLUA.bwood_c1,c2=OLUA.bwood_c2) = c1*c2*V^(c2-1) # marginal benetits
 dcw_dV(V,c1=10,c2=1.2) = c1*c2*V^(c2-1) # marginal costs
@@ -181,7 +181,7 @@ plot!(times, .- base.cost_pfharv[ix], lab = "PF harvesting costs", linecolor="da
 plot!(times, .- base.cost_sfharv[ix], lab = "SF harvesting costs", linecolor="darkseagreen3");
 plot!(times, .- base.cost_sfreg[ix], lab = "SF regeneration costs",linecolor="sienna")
 #-
-plot(times[1:101], base.welfare[1:101], lab = "Total welfare (base scen)", ylims=(0,1E6) )
+plot(times, base.welfare[ix], lab = "Total welfare (base scen)", ylims=(0,1E6) )
 
 # ------------------------------------------------------------------------------
 # ### Scenario analysis
@@ -248,11 +248,30 @@ plot!(times, out.S[ix], lab = "S - incr_timber_demand", linecolor="darkseagreen3
 plot!(times, base.A[ix], lab = "A - base", linewidth = 2, linecolor="sienna");
 plot!(times, out.A[ix], lab = "A - incr_timber_demand", linecolor="sienna", ls=:dot)
 #-
+plot(times, out.h[ix] .* out.V[ix] ./ out.S[ix], lab = "hV", linewidth = 2, linecolor="darkseagreen3", xlabel="years", title="Harvested volumes (increased wood demand)")
+plot(times, base.h[ix] .* base.V[ix] ./ base.S[ix], lab = "hV", linewidth = 2, linecolor="darkseagreen3", xlabel="years", title="Harvested volumes (increased wood demand)")
+#-
+plot(times[2:end], base.V[ix[2:end]]./ base.S[ix[2:end]],   lab = "base", linewidth = 2, linecolor="darkseagreen3", title="SF density");
+plot!(times[2:end], out.V[ix[2:end]] ./ out.S[ix[2:end]],   lab = "incr_timber_demand", linecolor="darkseagreen3", ls=:dot)
+#-
 plot(times, base.V[ix]./ base.S[ix],   lab = "base", linewidth = 2, linecolor="darkseagreen3", title="SF density");
 plot!(times, out.V[ix] ./ out.S[ix],   lab = "incr_timber_demand", linecolor="darkseagreen3", ls=:dot)
+#-
+plot(times, base.h[ix] , lab = "h - base", linewidth = 2, linecolor="darkgreen", xlabel="years", title="Harvested and regeneration area (increased wood demand)");
+plot!(times, base.r[ix] , lab = "r - base", linecolor="darkgreen", ls=:dot);
+plot!(times, out.h[ix] , lab = "h - incr_timber_demand", linewidth = 2, linecolor="darkseagreen3");
+plot!(times, out.r[ix] , lab = "r - incr_timber_demand", linecolor="darkseagreen3", ls=:dot)
+# Shadow prices..
+plot(times[2:end],  out.pF[ix[2:end]], lab = "pF: primary forest area price", linecolor="darkgreen", xlabel="years", title="Land shadow prices (increased wood demand)");
+plot!(times[2:end], out.pS[ix[2:end]], lab = "pS: secondary forest area price", linecolor="darkseagreen3");
+plot!(times[2:end], out.pA[ix[2:end]], lab = "pA: agricultural area price",linecolor="sienna");
+plot!(times[2:end], out.pV[ix[2:end]], lab = "pV: secondary forest timber volumes price",linecolor="lightgreen")
+#-
+
 
 # **Take home**
 # Increased timber demand would favour the switch from PF to SF
+# Both base and `incr_timber_demand` leads to the same SF density equilibrium (this depends from the discount rate) but in base the density is gradually reduced, while in `incr_timber_demand` there is a first large harvesting, followed by small but  gradual 
 
 # ------------------------------------------------------------------------------
 # #### Scen 5: `restricted_pf_harv`: Restricted primary forest harvesting

@@ -43,18 +43,12 @@ end
 
 md"""
 
-Symbols used within the LUC model:
+Compute land use optimizing welfare.
 
-State variables:
-- `F`: Primary forests area
-- `S`: Secondary forests area
-- `A`: Agricultural area
-- `V`: Timber volumes in secondary forest
-
-Control variables:
-- `d`: deforested area (primary forest)
-- `r`: regeneration area (secondary forest)
-- `h`: harvested area (secondary forest)
+A note on the time dimension:
+state_var[t] = state_var[t-1] + flow_var[t]
+state_var[t=0] is the current state
+The welfare optimization relates hence to times [t=1,t=T], i.e. [1,T], but the variables in the model relate to time [t=0,t=T] as we need the state variables at time t=0 (and these are fixed, as well for the flow faviables t=0 - that don't influence the model)
 """
 
 function luc_model(;
@@ -87,15 +81,14 @@ function luc_model(;
     h₀          = h₀,       # Initial sec for harvesting
     r₀          = r₀,       # Initial sec for regeneration
     # Options
-    optimizer   = optimizer,  # Desired optimizer (solver)
+    optimizer   = optimizer,   # Desired optimizer (solver)
     opt_options = opt_options, # Optimizer options
     T           = T,     # Time horizont
-    ns          = ns       # nNmber of supports on which to divide the time horizon
+    ns          = ns     # nNmber of supports on which to divide the time horizon
   ) 
 
   # Functions...
-  discount(t; σ=σ)                                                 = exp(-σ*t) # t == 0 ? 0.0 : exp(-σ*t) # discount function
-
+  discount(t; σ=σ)                                                 = t == 0 ? 0.0 : exp(-σ*t) # We don't consider welfare from t=0 where flow variables are not influential
 
   # Definition of the equations of motion of the state variables
   var_area_pf(d)          = -d
@@ -123,6 +116,7 @@ function luc_model(;
   @constraint(m, V(0)  == V₀)
   @constraint(m, d(0)  == d₀)
   @constraint(m, h(0)  == h₀)
+  @constraint(m, r(0)  == r₀)
   #@constraint(m, r(0)  == 0)
 
 
