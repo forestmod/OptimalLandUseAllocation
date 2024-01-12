@@ -1,6 +1,7 @@
 # # Forest dynamics numerical model
 
 # Literate.markdown("harvest_dynamics.jl", "."; flavor=Literate.CommonMarkFlavor(), execute=true) #src
+# p{break-inside: avoid} #src
 
 # ### Setting up the environment / packages...
 cd(@__DIR__)
@@ -117,7 +118,7 @@ plot!(times, np2[ix], lab = "Considering harvesting costs")
 # ------------------------------------------------------------------------------
 # ### Test 4: setting no Sf area change and no harvesting leads SF volumes to the Verhulst model
 
-out = luc_model(bwood_c1=0.01,h₀=0)
+out = luc_model(bwood_c1=0.01,h₀=0,bagr_c1=0.0001)
 Dsf = out.V ./ out.S 
 
 @testset "No wood benefits lead no harvesting, no area change and SF following the Verhulst model" begin
@@ -159,6 +160,12 @@ plot(times,  base.F[ix], lab = "F: primary forest area", linecolor="darkgreen", 
 plot!(times, base.S[ix], lab = "S: secondary forest area", linecolor="darkseagreen3");
 plot!(times, base.A[ix], lab = "A: agricultural area",linecolor="sienna")
 
+# Area transfers..
+plot(times,  base.d[ix] .- base.r[ix], lab = "F -> A", linecolor="darkgreen", xlabel="years", title="Land Areas transfers (base scen)");
+plot!(times, base.r[ix], lab = "F -> S", linecolor="darkseagreen3");
+plot!(times, base.a[ix], lab = "S -> A",linecolor="sienna")
+
+
 # Shadow prices..
 plot(times[2:end],  base.pF[ix[2:end]], lab = "pF: primary forest area price", linecolor="darkgreen", xlabel="years", title="LAnd shadow prices (base scen)");
 plot!(times[2:end], base.pS[ix[2:end]], lab = "pS: secondary forest area price", linecolor="darkseagreen3");
@@ -185,6 +192,13 @@ plot(times, base.welfare[ix], lab = "Total welfare (base scen)", ylims=(0,1E6) )
 
 # ------------------------------------------------------------------------------
 # ### Scenario analysis
+#
+# TODO: Divide in 3 sets of scenarios
+# A: Environmental analysis : `no_env_ben`, with_carb_ben_1, with_carb_ben_2, restricted_pf_harv
+# B: Price / market analysis: incr_timber_demand, lower_disc_rate, 
+# C: CC efffect: cc_effect_pf, cc_effect_sf, cc_effect_ag
+# We decouple CC effect with different anaysis on the specific ecosystem that we cosider mostly impacted by cc, at the time pf, sf or ag
+
 
 # ------------------------------------------------------------------------------
 # #### Scen 1: `no_env_ben`: PF environmental benefits not considered
@@ -202,10 +216,11 @@ plot!(times, out.A[ix], lab = "A - no_env_ben", linecolor="sienna", ls=:dot)
 # Non considering environmental benefits would, as expect, largelly faster the deforestation of primary forests. Interesting, the increased freed areas would largelly be allocated to agriculture, as the deforestation would imply larger supply of timber that would not benefits the secondary forests (our timber benefits function is concave, and the timber from primary and secondary forest is a completelly homogeneous product)
 
 # ------------------------------------------------------------------------------
-# #### Scen 2: Scen `with_carb_ben_1``: Carbon benefits (storage) accounted for (constant carbon price)
+# #### Scen 2: Carbon benefits (storage) accounted for
+# ##### `with_carb_ben_1`:  maxD PF << maxD sf
 out = luc_model(bc_c1=100.0)
 
-plot(times, base.F[ix], lab = "F - base", linewidth = 2, linecolor="darkgreen", xlabel="years", title="Land allocation whith fixed carb benefits");
+plot(times, base.F[ix], lab = "F - base", linewidth = 2, linecolor="darkgreen", xlabel="years", title="Land allocation whith carb ben (maxD PF << maxD SF)");
 plot!(times, out.F[ix], lab = "F - with_carb_ben_1", linecolor="darkgreen", ls=:dot);
 plot!(times, base.S[ix], lab = "S - base", linewidth = 2, linecolor="darkseagreen3");
 plot!(times, out.S[ix], lab = "S - with_carb_ben_1", linecolor="darkseagreen3", ls=:dot);
@@ -215,9 +230,40 @@ plot!(times, out.A[ix], lab = "A - with_carb_ben_1", linecolor="sienna", ls=:dot
 plot(times, base.V[ix]./ base.S[ix],   lab = "base", linewidth = 2, linecolor="darkseagreen3", title="SF density");
 plot!(times, out.V[ix] ./ out.S[ix],   lab = "with_carb_ben_1", linecolor="darkseagreen3", ls=:dot)
 
+# #####  `with_carb_ben_2`:  maxD PF < maxD sf
+
+out1 = luc_model(bc_c1=000.0, D=OLUA.K*0.8)
+out2 = luc_model(bc_c1=100.0, D=OLUA.K*0.8)
+
+plot(times, out1.F[ix], lab = "F - with_carb_ben_2a", linewidth = 2, linecolor="darkgreen", xlabel="years", title="Land allocation whith carb ben (maxD PF < maxD sf)", legend=:topright);
+plot!(times, out2.F[ix], lab = "F - with_carb_ben_2b", linecolor="darkgreen", ls=:dot);
+plot!(times, out1.S[ix], lab = "S - with_carb_ben_2a", linewidth = 2, linecolor="darkseagreen3");
+plot!(times, out2.S[ix], lab = "S - with_carb_ben_2b", linecolor="darkseagreen3", ls=:dot);
+plot!(times, out1.A[ix], lab = "A - with_carb_ben_2a", linewidth = 2, linecolor="sienna");
+plot!(times, out2.A[ix], lab = "A - with_carb_ben_2b", linecolor="sienna", ls=:dot)
+#-
+plot(times, base.V[ix]./ base.S[ix],   lab = "with_carb_ben_2a", linewidth = 2, linecolor="darkseagreen3", title="SF density");
+plot!(times, out.V[ix] ./ out.S[ix],   lab = "with_carb_ben_2b", linecolor="darkseagreen3", ls=:dot)
+
+# #####  `with_carb_ben_3`:  maxD PF W maxD sf
+
+out1 = luc_model(bc_c1=000.0, D=OLUA.K*1.2)
+out2 = luc_model(bc_c1=100.0, D=OLUA.K*1.2)
+
+plot(times, out1.F[ix], lab = "F - with_carb_ben_3a", linewidth = 2, linecolor="darkgreen", xlabel="years", title="Land allocation whith carb ben (maxD PF > maxD sf)", legend=:topright);
+plot!(times, out2.F[ix], lab = "F - with_carb_ben_3b", linecolor="darkgreen", ls=:dot);
+plot!(times, out1.S[ix], lab = "S - with_carb_ben_3a", linewidth = 2, linecolor="darkseagreen3");
+plot!(times, out2.S[ix], lab = "S - with_carb_ben_3b", linecolor="darkseagreen3", ls=:dot);
+plot!(times, out1.A[ix], lab = "A - with_carb_ben_3a", linewidth = 2, linecolor="sienna");
+plot!(times, out2.A[ix], lab = "A - with_carb_ben_3b", linecolor="sienna", ls=:dot)
+#-
+plot(times, base.V[ix]./ base.S[ix],   lab = "with_carb_ben_3a", linewidth = 2, linecolor="darkseagreen3", title="SF density");
+plot!(times, out.V[ix] ./ out.S[ix],   lab = "with_carb_ben_3b", linecolor="darkseagreen3", ls=:dot)
+
 # **Take home**
-# Interesting, because the maximum density of secondary forest is (not much) higher than primary forests, considering carbon value for timber sequestration would accellerate deforestation in favour of secondary forests
+# Interesting, because in our default parameterization the maximum density of secondary forest is (not much) higher than primary forests, considering carbon value for timber sequestration would accellerate deforestation in favour of secondary forests
 # In other words, as feared by some, carbon payments for forest sequestration could indeed favour monospecific plantations
+# However this depends on the relative maximum density between PF and SF (and the realtive  profitability): as max D on PF approach or overpass SF the opposite is true, and less deforestation of PF happens as remain convenient to keep the carbon in the PF
 
 # ------------------------------------------------------------------------------
 # #### Scen 3: `with_carb_ben_2`: Carbon benefits (storage) accounted for (with growing carbon price)
@@ -311,20 +357,20 @@ plot!(times, out.V[ix] ./ out.S[ix],   lab = "lower_disc_rate", linecolor="darks
 
 
 # ------------------------------------------------------------------------------
-# #### Scen 7: `cc_effect`: Climate change effects (reduced forest growth rate)
+# #### Scen 7: `cc_effect_sf`: Climate change effects (reduced forest growth rate)
 out = luc_model(γ = OLUA.γ-0.02)
 
 # In our simple model we model CC effects on the forest (mortality and growth) as a reduction of the growth rate of the overall secondary forest aggregate density. We do not consider here the effects on the primary forest nor on the agricultural sector.
 
 plot(times, base.F[ix], lab = "F - base", linewidth = 2, linecolor="darkgreen", xlabel="years", title="Land allocation whith cc effect");
-plot!(times, out.F[ix], lab = "F - cc_effect", linecolor="darkgreen", ls=:dot);
+plot!(times, out.F[ix], lab = "F - cc_effect_sf", linecolor="darkgreen", ls=:dot);
 plot!(times, base.S[ix], lab = "S - base", linewidth = 2, linecolor="darkseagreen3");
-plot!(times, out.S[ix], lab = "S - cc_effect", linecolor="darkseagreen3", ls=:dot);
+plot!(times, out.S[ix], lab = "S - cc_effect_sf", linecolor="darkseagreen3", ls=:dot);
 plot!(times, base.A[ix], lab = "A - base", linewidth = 2, linecolor="sienna");
-plot!(times, out.A[ix], lab = "A - cc_effect", linecolor="sienna", ls=:dot)
+plot!(times, out.A[ix], lab = "A - cc_effect_sf", linecolor="sienna", ls=:dot)
 #-
 plot(times, base.h[ix] .* base.V[ix]./ base.S[ix],   lab = "base", linewidth = 2, linecolor="darkseagreen3", title="SF hV");
-plot!(times, out.h[ix] .* out.V[ix] ./ out.S[ix],   lab = "cc_effect", linecolor="darkseagreen3", ls=:dot)
+plot!(times, out.h[ix] .* out.V[ix] ./ out.S[ix],   lab = "cc_effect_sf", linecolor="darkseagreen3", ls=:dot)
 
 # **Take home**
 # Even thought the modelled effect concerns only the secondary forest, we see that deforestation of primary forest is also impacted, most likely this is a spillover effect due to the need to compensate the lower harvesting volumes coming from secondary forests. 
