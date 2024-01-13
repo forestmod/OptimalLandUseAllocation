@@ -121,119 +121,59 @@ The welfare (the objective of the maximisation) is then the sum of all benefits 
 
 ## Parametrization
 
-The `base` scenario, that is then compared with the specific scenarios, assume the following exogenous parameters.
+The `base` scenario assumes the following exogenous parameters. Each individual scenario then overrides one or more of them as specified in the table `Scenarios`.
 
 ### Initial values
 
 | Variable | Interpretation | Unit | Value
 | ------ | ------- | ----- | ----- |
-| F₀ | Init Primary Forest area | M ha | |
-| S₀ | Init Secondary Forest area | M ha | |
-| A₀ | Init Agricultural area     | M ha ||
-| V₀ | Init timber volumes of secondary forests | M m^3 | |
-| d₀ | Init prim forest harvesting area | M ha | |
-| h₀ | Init sec forest harvesting area | M ha ||
-| r₀ | Init sec forest regeneration area | M ha ||
+| F₀ | Init Primary Forest area | M ha | 485.4 |
+| S₀ | Init Secondary Forest area | M ha | 11.2 |
+| A₀ | Init Agricultural area     | M ha | 238.7 |
+| V₀ | Init timber volumes of secondary forests | M m^3 | 3057 |
+| d₀ | Init prim forest harvesting area | M ha | 0.49 |
+| h₀ | Init sec forest harvesting area | M ha | 0.11 |
+| r₀ | Init sec forest regeneration area | M ha | 0.24 |
 
 ### Parameters
 
 | Parameter | Interpretation | Unit | Value
 | ------ | ------- | ----- | ----- |
-| D | Density of the primary forest (constant) | m^3/ha | |
+| D | Density of the primary forest (constant) | m^3/ha | 244.0 |
 | K | Maximum density of the secondary forest (i.e. carrying capacity) | m^3/ha | 600 |
 | σ | Discount rate | rate | 0.04 | 
 | γ | Growth rate of the logistic function in terms of density | rate | 0.1 |
 
 ### Costs and benefits coefficients
 
-The following table provides the values of all the coefficients appearing in the benefit and cost functions. While power coefficients (influencing the degree of curvature of the functions) are simply assumed, the multipliers are calibrated such that the initial values of the relevant cost or benefit assume realistic values. 
+The following table provides the values of all the coefficients appearing in the benefit and cost functions. While power coefficients (influencing the degree of curvature of the functions) are simply assumed, the multipliers are calibrated in such a way that the initial values of the relevant costs or benefits assume realistic values. 
 
 | Coef | Interpretation | Value | Origin |
 | ---- | -------------- | ----- | ------ |
-| c1 | Multiplier of the environmental benefits |  | `ben_env = (0.3*2700) * F₀` |
+| c1 | Multiplier of the environmental benefits | 17846 | `ben_env₀ = (0.3*2700) * F₀` |
 | c2 | Power of the environmental benefit | 1/2 | assumed |
-| c3 | Multiplier of the agricultural benefits |  | `ben_agr = 603 * A₀` |
+| c3 | Multiplier of the agricultural benefits | 9330 | `ben_agr₀ = 603 * A₀` |
 | c4 | Power of the agricultural benefit | 1/2 | assumed |
+| c5 | Multiplier of the timber benefits | 1845 | `ben_timber₀ = 300 * hV₀` |
+| c6 | Power of the timber benefits | 1/2 |  assumed |
+| c7 | Multiplier of the carbon benefits | 0 | `ben_carbon₀ = 0 * ΔV₀` |
+| c8 | Growth rate of the carbon benefits | 0 |  assumed |
+| c9 | Multiplier of the PF harvesting costs | 5.55e11 | `cost_pfharv₀ = 10 * hV₀_pf` |
+| c10 | Power of the harvesting costs of PF (on harvested area) | 1 |  assumed |
+| c11 | Power of the harvesting costs of PF (on area) | -4 |  assumed |
+| c12 | Multiplier of the SF harvesting costs | 5 | `cost_sfharv₀ = 5 * hV₀_sf` |
+| c13 | Power of the harvesting costs of SF (on harvested area) | 1 |  assumed |
+| c14 | Multiplier of the SF regeneration costs | 17.8 | `cost_sfreg₀ = 50 * (r₀+h₀)` |
+| c15 | Power of the harvesting costs of SF (on harvested area) | 0 |  assumed |
 
 
-# --------
-bwood_c2   = 1/2  # Power of the wood-use benefits
-"""
-Multiplier of the wood benefits
-
-bwood_c1 is calibrated such that:
-ben_wood = (300) * hV
-That is, the wood benefits is equal to the \$/m^3 value from export value multiplied the initial harvested values (in Mm^3),
-Hence it is such that ben_wood is in M\$
-"""
-bwood_c1   = 1.5*100.756304548882 * (d₀*D + h₀*V₀/S₀) / ((d₀*D + h₀*V₀/S₀)^bwood_c2 ) # Multiplier of the wood-use benefits
-# --------
-bc_c2      = 0             # Carbon price growth rate
-"""
-Multiplier of the carbon benefits
-
-bc_c1 is calibrated such that:
-bc_c1 = (100) * ΔV
-That is, the carbon benefits is equal to the \$/m^3 value of (assumed) carbon value multiplied the initial ΔV, the total
-delta forest volumes, i.e. natural growt of secondary forest less harvested secondary forest less harvested primary
-forest volumes (in Mm^3)
-Hence it is such that ben_carbon is in M\$
-Note that here we have:
-bc_c1*exp(bc_c2 * t) * ΔV  [M\$] =  100 * ΔV [M\$]
-So ΔV cancel it out and being interested in start time, so does exp(bc_c2 * t)
-"""
-bc_c1      = 0.0 #100   # Carbon price init price
-# --------
-chpf_c2    = 1 #2 1  # Power of the harvesting costs of primary forest (harvested area)
-chpf_c3    = -4 #-16 -2  # Power of the harvesting costs of primary forest (primary forest area)
-"""
-Multiplier of the primary forest harvesting costs
-
-chpf_c1 is calibrated such that:
-cost_pfharv = (100) * hv_pf
-That is, the timber harvesting cost of primary forests is equal to the \$/m^3 cost (assumed) multiplied by the harvested
-volumes of primary forest (in Mm^3)
-Hence it is such that cost_pfharv is in M\$
-"""
-chpf_c1    = 10 * (d₀*D) / ((d₀*D)^chpf_c2 * F₀^chpf_c3) # Multiplier of the harvesting costs of primary forest
-# --------
-chsf_c2    = 1    # Power of the harvesting costs of secondary forest
-"""
-Multiplier of the secondary forest harvesting costs
-
-chsf_c1 is calibrated such that:
-cost_sfharv = (30) * hV_sf
-That is, the timber harvesting cost of secondary forests is equal to the \$/m^3 cost (assumed) multiplied by the harvested
-volumes of secondary forest (in Mm^3)
-Hence it is such that cost_sfharv is in M\$
-"""
-chsf_c1    = 5.0 * (h₀*V₀/S₀) / ((h₀*V₀/S₀)^chsf_c2)   # Multiplier of the harvesting costs of secondary forest
-# --------
-crsf_c2    = 0    # Power of the regeneration costs of secondary forest
-"""
-Multiplier of the secondary forest regeneration costs
-
-crsf_c1 is calibrated such that:
-cost_sfreg = 100 * (r+h)
-That is, the forest regeneration cost of secondary forests is equal to the \$/ha cost (assumed) multiplied by the
-regeneration area of secondary forest (new regeneration from ex-primary forest area plus post-harvesting regeneration, in Mha)
-Hence it is such that cost_sfreg is in M\$
-"""
-crsf_c1    = 50 * (r₀+h₀) / ((r₀+h₀)^crsf_c2) # Multiplier of the regeneration costs of secondary forest
-
-# Options
-optimizer   = Ipopt.Optimizer  # Desired optimizer (solver)
-opt_options = Dict("max_cpu_time" => 20.0, "print_level" => 3)
-T           = 2000             # Time horizon (years)
-ns          = 401;             # Number of points in the time grid - seems not to influence much the results (good!)
-
-
-
-
-### Coefficients
-
-
-
+# Optimization options
+| Option | Description | Value |
+| ------ | ----------- | ----- |
+| optimizer  | Desired optimizer (solver engine) | Ipopt.Optimizer |
+| opt_options | Solver options | Dict("max_cpu_time" => 20.0, "print_level" => 3) |
+| T | Time horizon (years) | 2000 | 
+| ns | Number of points in the time grid | 401 |
 
 
 

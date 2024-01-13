@@ -86,7 +86,7 @@ chpf_c3    = -4 #-16 -2  # Power of the harvesting costs of primary forest (prim
 Multiplier of the primary forest harvesting costs
 
 chpf_c1 is calibrated such that:
-cost_pfharv = (100) * hv_pf
+cost_pfharv = (10) * hv_pf
 That is, the timber harvesting cost of primary forests is equal to the \$/m^3 cost (assumed) multiplied by the harvested
 volumes of primary forest (in Mm^3)
 Hence it is such that cost_pfharv is in M\$
@@ -98,7 +98,7 @@ chsf_c2    = 1    # Power of the harvesting costs of secondary forest
 Multiplier of the secondary forest harvesting costs
 
 chsf_c1 is calibrated such that:
-cost_sfharv = (30) * hV_sf
+cost_sfharv = (5) * hV_sf
 That is, the timber harvesting cost of secondary forests is equal to the \$/m^3 cost (assumed) multiplied by the harvested
 volumes of secondary forest (in Mm^3)
 Hence it is such that cost_sfharv is in M\$
@@ -110,7 +110,7 @@ crsf_c2    = 0    # Power of the regeneration costs of secondary forest
 Multiplier of the secondary forest regeneration costs
 
 crsf_c1 is calibrated such that:
-cost_sfreg = 100 * (r+h)
+cost_sfreg = 50 * (r+h)
 That is, the forest regeneration cost of secondary forests is equal to the \$/ha cost (assumed) multiplied by the
 regeneration area of secondary forest (new regeneration from ex-primary forest area plus post-harvesting regeneration, in Mha)
 Hence it is such that cost_sfreg is in M\$
