@@ -39,24 +39,24 @@ step     = times[end] / (ntpoints) ; # We choosen to discretize every 5 years
 out_dense    = luc_model(ns=1001,opt_options = Dict("max_cpu_time" => 60.0))
 ix_dense     = 2:(length(out_dense.support)-800) # index for plotting
 times_dense  = out_dense.support[ix_dense] # every 2 years
-out_sparce   = luc_model(ns=201)
-ix_sparce    = 2:(length(out_sparce.support)-160) # index for plotting
-times_sparce = out_sparce.support[ix_sparce] # every 10 years
+out_sparse   = luc_model(ns=201)
+ix_sparse    = 2:(length(out_sparse.support)-160) # index for plotting
+times_sparse = out_sparse.support[ix_sparce] # every 10 years
 @testset "Number of discretization points" begin
     @test isapprox(base.r[findfirst(t-> t==80,times)],out_dense.r[findfirst(t-> t==80,times_dense)],atol=0.04)
-    @test isapprox(base.r[findfirst(t-> t==80,times)],out_sparce.r[findfirst(t-> t==80,times_sparce)],atol=0.04)
+    @test isapprox(base.r[findfirst(t-> t==80,times)],out_sparse.r[findfirst(t-> t==80,times_sparse)],atol=0.04)
     @test isapprox(base.F[findfirst(t-> t==80,times)],out_dense.F[findfirst(t-> t==80,times_dense)],rtol=0.05)
-    @test isapprox(base.F[findfirst(t-> t==80,times)],out_sparce.F[findfirst(t-> t==80,times_sparce)],rtol=0.05)
+    @test isapprox(base.F[findfirst(t-> t==80,times)],out_sparse.F[findfirst(t-> t==80,times_sparse)],rtol=0.05)
 end
 
 # Graphically...
 plot(times, base.r[ix], xlabel="years", label="Base time point density (5 y)", title="SF reg area (flow) under different time densities");
 plot!(times_dense, out_dense.r[ix_dense], label="Dense time point density (2 y)");
-plot!(times_sparce, out_sparce.r[ix_sparce], label="Sparce time point density (10 y)")
+plot!(times_sparse, out_sparse.r[ix_sparse], label="Sparse time point density (10 y)")
 #-
 plot(times, base.F[ix], xlabel="years", label="Base time point density (5 y)", title="Forest prim area (stock) under different time densities");
 plot!(times_dense, out_dense.F[ix_dense], label="Dense time point density (2 y)");
-plot!(times_sparce, out_sparce.F[ix_sparce], label="Sparce time point density (10 y)")
+plot!(times_sparse, out_sparse.F[ix_sparse], label="Sparse time point density (10 y)")
 
 # **Take home**
 # Altought for stock variables being cumulative,we have some differences, discretization doesn't significantly influence the nature of the results. All our comparisions of the scenario with base are made using the same time discretization.
@@ -194,7 +194,7 @@ plot(times, base.welfare[ix], lab = "Total welfare (base scen)", ylims=(0,1E6) )
 # ### Scenario analysis
 #
 # TODO: Divide in 3 sets of scenarios
-# A: Environmental analysis : `no_env_ben`, with_carb_ben_1, with_carb_ben_2, restricted_pf_harv
+# A: Environmental analysis : `no_env_ben`, with_carb_ben_1, with_carb_ben_3, with_carb_ben_3, with_carb_ben_grp, restricted_pf_harv
 # B: Price / market analysis: incr_timber_demand, lower_disc_rate, 
 # C: CC efffect: cc_effect_pf, cc_effect_sf, cc_effect_ag
 # We decouple CC effect with different anaysis on the specific ecosystem that we cosider mostly impacted by cc, at the time pf, sf or ag
@@ -266,22 +266,41 @@ plot!(times, out.V[ix] ./ out.S[ix],   lab = "with_carb_ben_3b", linecolor="dark
 # However this depends on the relative maximum density between PF and SF (and the realtive  profitability): as max D on PF approach or overpass SF the opposite is true, and less deforestation of PF happens as remain convenient to keep the carbon in the PF
 
 # ------------------------------------------------------------------------------
-# #### Scen 3: `with_carb_ben_2`: Carbon benefits (storage) accounted for (with growing carbon price)
+# #### Scen 3: `with_carb_ben_grp`: Carbon benefits (storage) accounted for (with growing carbon price)
 out = luc_model(bc_c1=100.0,bc_c2=(OLUA.σ-0.005)) # setting bc_c2=OLUA.σ doesn't solve
 
 plot(times, base.F[ix], lab = "F - base", linewidth = 2, linecolor="darkgreen", xlabel="years", title="Land allocation whith increasing carb benefits");
-plot!(times, out.F[ix], lab = "F - with_carb_ben_2", linecolor="darkgreen", ls=:dot);
+plot!(times, out.F[ix], lab = "F - with_carb_ben_grp", linecolor="darkgreen", ls=:dot);
 plot!(times, base.S[ix], lab = "S - base", linewidth = 2, linecolor="darkseagreen3");
-plot!(times, out.S[ix], lab = "S - with_carb_ben_2", linecolor="darkseagreen3", ls=:dot);
+plot!(times, out.S[ix], lab = "S - with_carb_ben_grp", linecolor="darkseagreen3", ls=:dot);
 plot!(times, base.A[ix], lab = "A - base", linewidth = 2, linecolor="sienna");
-plot!(times, out.A[ix], lab = "A - with_carb_ben_2", linecolor="sienna", ls=:dot)
+plot!(times, out.A[ix], lab = "A - with_carb_ben_grp", linecolor="sienna", ls=:dot)
 #-
 plot(times, base.V[ix]./ base.S[ix],   lab = "base", linewidth = 2, linecolor="darkseagreen3", title="SF density");
-plot!(times, out.V[ix] ./ out.S[ix],   lab = "with_carb_ben_2", linecolor="darkseagreen3", ls=:dot)
+plot!(times, out.V[ix] ./ out.S[ix],   lab = "with_carb_ben_grp", linecolor="darkseagreen3", ls=:dot)
 
 # **Take home**
 # Not what I did expected. I did expect that, becasue when you have to repay it is more expensive, it doesn't become appropriate to storage carbon.
 # Instead it looks like it is just an increase version of the `with_carb_ben_2` scenario
+
+# ------------------------------------------------------------------------------
+# #### Scen 5: `restricted_pf_harv`: Restricted primary forest harvesting
+out = luc_model(chpf_c1=OLUA.chpf_c1*5)
+
+plot(times, base.F[ix], lab = "F - base", linewidth = 2, linecolor="darkgreen", xlabel="years", title="Land allocation whith PF harv restrictions");
+plot!(times, out.F[ix], lab = "F - restricted_pf_harv", linecolor="darkgreen", ls=:dot);
+plot!(times, base.S[ix], lab = "S - base", linewidth = 2, linecolor="darkseagreen3");
+plot!(times, out.S[ix], lab = "S - restricted_pf_harv", linecolor="darkseagreen3", ls=:dot);
+plot!(times, base.A[ix], lab = "A - base", linewidth = 2, linecolor="sienna");
+plot!(times, out.A[ix], lab = "A - restricted_pf_harv", linecolor="sienna", ls=:dot)
+#-
+plot(times, base.V[ix]./ base.S[ix],   lab = "base", linewidth = 2, linecolor="darkseagreen3", title="SF density");
+plot!(times, out.V[ix] ./ out.S[ix],   lab = "restricted_pf_harv", linecolor="darkseagreen3", ls=:dot)
+#-
+plot(times, base.h[ix] .* base.V[ix]./ base.S[ix],   lab = "base", linewidth = 2, linecolor="darkseagreen3", title="SF hV");
+plot!(times, out.h[ix] .* out.V[ix] ./ out.S[ix],   lab = "restricted_pf_harv", linecolor="darkseagreen3", ls=:dot)
+
+
 
 # ------------------------------------------------------------------------------
 # #### Scen 4: `incr_timber_demand``: Increased benefits of timber resources
@@ -319,23 +338,6 @@ plot!(times[2:end], out.pV[ix[2:end]], lab = "pV: secondary forest timber volume
 # Increased timber demand would favour the switch from PF to SF
 # Both base and `incr_timber_demand` leads to the same SF density equilibrium (this depends from the discount rate) but in base the density is gradually reduced, while in `incr_timber_demand` there is a first large harvesting, followed by small but  gradual 
 
-# ------------------------------------------------------------------------------
-# #### Scen 5: `restricted_pf_harv`: Restricted primary forest harvesting
-out = luc_model(chpf_c1=OLUA.chpf_c1*5)
-
-plot(times, base.F[ix], lab = "F - base", linewidth = 2, linecolor="darkgreen", xlabel="years", title="Land allocation whith PF harv restrictions");
-plot!(times, out.F[ix], lab = "F - restricted_pf_harv", linecolor="darkgreen", ls=:dot);
-plot!(times, base.S[ix], lab = "S - base", linewidth = 2, linecolor="darkseagreen3");
-plot!(times, out.S[ix], lab = "S - restricted_pf_harv", linecolor="darkseagreen3", ls=:dot);
-plot!(times, base.A[ix], lab = "A - base", linewidth = 2, linecolor="sienna");
-plot!(times, out.A[ix], lab = "A - restricted_pf_harv", linecolor="sienna", ls=:dot)
-#-
-plot(times, base.V[ix]./ base.S[ix],   lab = "base", linewidth = 2, linecolor="darkseagreen3", title="SF density");
-plot!(times, out.V[ix] ./ out.S[ix],   lab = "restricted_pf_harv", linecolor="darkseagreen3", ls=:dot)
-#-
-plot(times, base.h[ix] .* base.V[ix]./ base.S[ix],   lab = "base", linewidth = 2, linecolor="darkseagreen3", title="SF hV");
-plot!(times, out.h[ix] .* out.V[ix] ./ out.S[ix],   lab = "restricted_pf_harv", linecolor="darkseagreen3", ls=:dot)
-
 
 # ------------------------------------------------------------------------------
 # #### Scen 6: `lower_disc_rate`: Decreased discount rate
@@ -355,14 +357,32 @@ plot!(times, out.V[ix] ./ out.S[ix],   lab = "lower_disc_rate", linecolor="darks
 # Lower discount rate surprisily has a positive effect in reducing deforestation, primarily by reducing allocation to agricultural areas. Even with less avilable area from the less deforestation, SF area increases.
 # Also, we note that the eq density of SF, as the discount rate decrease, move up toward the MSY. We find again a well know principle in capital standard capital theory and nat res economics: as harvesting SF doesn't depend from SF stocks, the intertemporal equilibrium is obtained when the rate of biological growth (dG/dV) equals the discount rate (PERMAN, Natural resource and environmental economics, 4th ed., p. 583) , and when this is zero this corresponds to the MSY, as we saw in the validation section.
 
+# ------------------------------------------------------------------------------
+# #### Scen 7: `cc_effect_pf`: Climate change effects (reduced PF density)
+out = luc_model(D = OLUA.D * 0.8)
+
+# CC effect under the hipothesis of PFbeing more involved
+
+plot(times, base.F[ix], lab = "F - base", linewidth = 2, linecolor="darkgreen", xlabel="years", title="Land allocation whith cc impact of PF");
+plot!(times, out.F[ix], lab = "F - cc_effect_pf", linecolor="darkgreen", ls=:dot);
+plot!(times, base.S[ix], lab = "S - base", linewidth = 2, linecolor="darkseagreen3");
+plot!(times, out.S[ix], lab = "S - cc_effect_pf", linecolor="darkseagreen3", ls=:dot);
+plot!(times, base.A[ix], lab = "A - base", linewidth = 2, linecolor="sienna");
+plot!(times, out.A[ix], lab = "A - cc_effect_pf", linecolor="sienna", ls=:dot)
+#-
+plot(times, base.h[ix] .* base.V[ix]./ base.S[ix],   lab = "base", linewidth = 2, linecolor="darkseagreen3", title="SF hV");
+plot!(times, out.h[ix] .* out.V[ix] ./ out.S[ix],   lab = "cc_effect_pf", linecolor="darkseagreen3", ls=:dot)
+
+# **Take home**
+# Even thought the modelled effect concerns only the secondary forest, we see that deforestation of primary forest is also impacted, most likely this is a spillover effect due to the need to compensate the lower harvesting volumes coming from secondary forests. 
 
 # ------------------------------------------------------------------------------
-# #### Scen 7: `cc_effect_sf`: Climate change effects (reduced forest growth rate)
+# #### Scen 8: `cc_effect_sf`: Climate change effects (reduced forest growth rate)
 out = luc_model(γ = OLUA.γ-0.02)
 
 # In our simple model we model CC effects on the forest (mortality and growth) as a reduction of the growth rate of the overall secondary forest aggregate density. We do not consider here the effects on the primary forest nor on the agricultural sector.
 
-plot(times, base.F[ix], lab = "F - base", linewidth = 2, linecolor="darkgreen", xlabel="years", title="Land allocation whith cc effect");
+plot(times, base.F[ix], lab = "F - base", linewidth = 2, linecolor="darkgreen", xlabel="years", title="Land allocation whith cc impact on SF");
 plot!(times, out.F[ix], lab = "F - cc_effect_sf", linecolor="darkgreen", ls=:dot);
 plot!(times, base.S[ix], lab = "S - base", linewidth = 2, linecolor="darkseagreen3");
 plot!(times, out.S[ix], lab = "S - cc_effect_sf", linecolor="darkseagreen3", ls=:dot);
@@ -374,4 +394,21 @@ plot!(times, out.h[ix] .* out.V[ix] ./ out.S[ix],   lab = "cc_effect_sf", lineco
 
 # **Take home**
 # Even thought the modelled effect concerns only the secondary forest, we see that deforestation of primary forest is also impacted, most likely this is a spillover effect due to the need to compensate the lower harvesting volumes coming from secondary forests. 
+
+# ------------------------------------------------------------------------------
+# #### Scen 8: `cc_effect_ag`: Climate change effects (reduced forest growth rate)
+out = luc_model(bagr_c1 = OLUA.bagr_c1*0.8)
+
+plot(times, base.F[ix], lab = "F - base", linewidth = 2, linecolor="darkgreen", xlabel="years", title="Land allocation whith cc impact on ag");
+plot!(times, out.F[ix], lab = "F - cc_effect_ag", linecolor="darkgreen", ls=:dot);
+plot!(times, base.S[ix], lab = "S - base", linewidth = 2, linecolor="darkseagreen3");
+plot!(times, out.S[ix], lab = "S - cc_effect_ag", linecolor="darkseagreen3", ls=:dot);
+plot!(times, base.A[ix], lab = "A - base", linewidth = 2, linecolor="sienna");
+plot!(times, out.A[ix], lab = "A - cc_effect_ag", linecolor="sienna", ls=:dot)
+#-
+plot(times, base.h[ix] .* base.V[ix]./ base.S[ix],   lab = "base", linewidth = 2, linecolor="darkseagreen3", title="SF hV");
+plot!(times, out.h[ix] .* out.V[ix] ./ out.S[ix],   lab = "cc_effect_ag", linecolor="darkseagreen3", ls=:dot)
+
+# **Take home**
+#
 

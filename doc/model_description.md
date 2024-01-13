@@ -150,7 +150,7 @@ The following table provides the values of all the coefficients appearing in the
 
 | Coef | Interpretation | Value | Origin |
 | ---- | -------------- | ----- | ------ |
-| c1 | Multiplier of the environmental benefits | 17846 | `ben_env₀ = (0.3*2700) * F₀` |
+| c1 | Multiplier of the environmental benefits | 17846 | `ben_env₀ = 810 * F₀` |
 | c2 | Power of the environmental benefit | 1/2 | assumed |
 | c3 | Multiplier of the agricultural benefits | 9330 | `ben_agr₀ = 603 * A₀` |
 | c4 | Power of the agricultural benefit | 1/2 | assumed |
@@ -167,15 +167,53 @@ The following table provides the values of all the coefficients appearing in the
 | c15 | Power of the harvesting costs of SF (on harvested area) | 0 |  assumed |
 
 
-# Optimization options
+### Optimization options
 | Option | Description | Value |
 | ------ | ----------- | ----- |
-| optimizer  | Desired optimizer (solver engine) | Ipopt.Optimizer |
-| opt_options | Solver options | Dict("max_cpu_time" => 20.0, "print_level" => 3) |
+| optimizer  | Desired optimizer (solver engine) | `Ipopt.Optimizer` |
+| opt_options | Solver options | `Dict("max_cpu_time" => 20.0, "print_level" => 3)` |
 | T | Time horizon (years) | 2000 | 
 | ns | Number of points in the time grid | 401 |
 
 
-
-
 ## Scenarios
+
+### Validation scenarios 
+| Scenario | Overridden parameters |
+| ------- | ---------------------- |
+| dense | `ns=1001,opt_options = Dict("max_cpu_time" => 60.0)` |
+| sparse | `ns=201` |
+| no_discount | `σ=0`|
+| eating_the_cake1 | `c1=0.0,c3=0,c9=0,c11=0,c12=10000, c14=1000,γ=0` |
+| eating_the_cake2 | `c1=0.0,c33=0,c10=9,c10=1.2, c11=0, c12=10000, c14=1000,γ=0` |
+| no_harvesting | `c3=0.0001,c5=0.01,h₀=0` |
+
+
+### Environmental analysis
+
+| Scenario | Overridden parameters |
+| ------- | ---------------------- |
+| no_env_ben | `c1=0.0` |
+| with_carb_ben_1 | `c7=100.0` |
+| with_carb_ben_2a | `D=K*0.8` |
+| with_carb_ben_2b | `c7=100.0, D=K*0.8` |
+| with_carb_ben_3a | `D=K*1.2` |
+| with_carb_ben_3b | `c7=100.0, D=K*1.2` |
+| with_carb_ben_grp | `c7=100.0,c8=(σ-0.005)` |
+| restricted_pf_harv | `c9=c9*5` |
+
+
+### Market analysis
+
+| Scenario | Overridden parameters |
+| ------- | ---------------------- |
+| incr_timber_demand | `c5=c5*5` | 
+| lower_disc_rate | `σ=σ-0.01` |
+
+### CC impact analysis
+
+| Scenario | Overridden parameters |
+| ------- | ---------------------- |
+| cc_effect_pf | `D = D * 0.8` |
+| cc_effect_sf | `γ = γ-0.02` |
+| cc_effect_ag | `c3 = c3*0.8` |
