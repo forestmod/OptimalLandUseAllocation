@@ -11,6 +11,7 @@ Pkg.activate(".")
 #Pkg.Instantiate()
 
 using Plots
+using Plots.PlotMeasures
 using Markdown
 using Revise
 using Test
@@ -26,7 +27,19 @@ base     = luc_model() # compute the optimization for the "base" scenario
 ix       = 2:(length(base.support)-320) # index for plotting (we discard the distant future and the first year that is not part of the optimization)
 times    = base.support[ix] 
 ntpoints = length(times)
-step     = times[end] / (ntpoints) ; # We choosen to discretize every 5 years
+step     = times[end] / (ntpoints)  # We choosen to discretize every 5 years
+
+# Computing the indexes up to year 200
+ix200    = findfirst(t -> t >= 200, times)
+ixs200   = ix[1:ix200]
+times200 = base.support[ixs200]
+ntpoints200 = length(times200)
+
+# Computing the indexes up to year 100
+ix100    = findfirst(t -> t >= 100, times)
+ixs100   = ix[1:ix100]
+times100 = base.support[ixs100]
+ntpoints100 = length(times100)
 
 # ------------------------------------------------------------------------------
 # ### Model validation...
@@ -41,7 +54,7 @@ ix_dense     = 2:(length(out_dense.support)-800) # index for plotting
 times_dense  = out_dense.support[ix_dense] # every 2 years
 out_sparse   = luc_model(ns=201)
 ix_sparse    = 2:(length(out_sparse.support)-160) # index for plotting
-times_sparse = out_sparse.support[ix_sparce] # every 10 years
+times_sparse = out_sparse.support[ix_sparse] # every 10 years
 @testset "Number of discretization points" begin
     @test isapprox(base.r[findfirst(t-> t==80,times)],out_dense.r[findfirst(t-> t==80,times_dense)],atol=0.04)
     @test isapprox(base.r[findfirst(t-> t==80,times)],out_sparse.r[findfirst(t-> t==80,times_sparse)],atol=0.04)
@@ -163,8 +176,7 @@ plot!(times, base.A[ix], lab = "A: agricultural area",linecolor="sienna")
 # Area transfers..
 plot(times,  base.d[ix] .- base.r[ix], lab = "F -> A", linecolor="darkgreen", xlabel="years", title="Land Areas transfers (base scen)");
 plot!(times, base.r[ix], lab = "F -> S", linecolor="darkseagreen3");
-plot!(times, base.a[ix], lab = "S -> A",linecolor="sienna")
-
+# plot!(times, base.a[ix], lab = "S -> A",linecolor="sienna") # This only with model exteded version ! #src
 
 # Shadow prices..
 plot(times[2:end],  base.pF[ix[2:end]], lab = "pF: primary forest area price", linecolor="darkgreen", xlabel="years", title="LAnd shadow prices (base scen)");
@@ -183,7 +195,8 @@ plot!(times, base.F[ix] .* OLUA.D .+ base.V[ix],  lab = "TOT V: total forest vol
 plot(times,  base.ben_env[ix], lab = "Environmental benefits", linecolor="darkgreen", title="Welfare balance (base scen)"); 
 plot!(times, base.ben_agr[ix], lab = "Agr benefits",linecolor="sienna") ;
 plot!(times, base.ben_wood[ix], lab = "Wood use benefits", linecolor="darkseagreen3");
-plot!(times, base.ben_carbon[ix], lab = "Carbon benefits", linecolor="grey");
+plot!(times, base.ben_carbon_seq[ix], lab = "Carbon benefits (seq)", linecolor="grey");
+plot!(times, base.ben_carbon_sub[ix], lab = "Carbon benefits (sub)", linecolor="darkgrey");
 plot!(times, .- base.cost_pfharv[ix], lab = "PF harvesting costs", linecolor="darkgreen");
 plot!(times, .- base.cost_sfharv[ix], lab = "SF harvesting costs", linecolor="darkseagreen3");
 plot!(times, .- base.cost_sfreg[ix], lab = "SF regeneration costs",linecolor="sienna")
@@ -218,7 +231,7 @@ plot!(times, out.A[ix], lab = "A - no_env_ben", linecolor="sienna", ls=:dot)
 # ------------------------------------------------------------------------------
 # #### Scen 2: Carbon benefits (storage) accounted for
 # ##### `with_carb_ben_1`:  maxD PF << maxD sf
-out = luc_model(bc_c1=100.0)
+out = luc_model(bc_seq_c1=100.0)
 
 plot(times, base.F[ix], lab = "F - base", linewidth = 2, linecolor="darkgreen", xlabel="years", title="Land allocation whith carb ben (maxD PF << maxD SF)");
 plot!(times, out.F[ix], lab = "F - with_carb_ben_1", linecolor="darkgreen", ls=:dot);
@@ -232,8 +245,8 @@ plot!(times, out.V[ix] ./ out.S[ix],   lab = "with_carb_ben_1", linecolor="darks
 
 # #####  `with_carb_ben_2`:  maxD PF < maxD sf
 
-out1 = luc_model(bc_c1=000.0, D=OLUA.K*0.8)
-out2 = luc_model(bc_c1=100.0, D=OLUA.K*0.8)
+out1 = luc_model(bc_seq_c1=000.0, D=OLUA.K*0.8)
+out2 = luc_model(bc_seq_c1=100.0, D=OLUA.K*0.8)
 
 plot(times, out1.F[ix], lab = "F - with_carb_ben_2a", linewidth = 2, linecolor="darkgreen", xlabel="years", title="Land allocation whith carb ben (maxD PF < maxD sf)", legend=:topright);
 plot!(times, out2.F[ix], lab = "F - with_carb_ben_2b", linecolor="darkgreen", ls=:dot);
@@ -247,8 +260,8 @@ plot!(times, out.V[ix] ./ out.S[ix],   lab = "with_carb_ben_2b", linecolor="dark
 
 # #####  `with_carb_ben_3`:  maxD PF W maxD sf
 
-out1 = luc_model(bc_c1=000.0, D=OLUA.K*1.2)
-out2 = luc_model(bc_c1=100.0, D=OLUA.K*1.2)
+out1 = luc_model(bc_seq_c1=000.0, D=OLUA.K*1.2)
+out2 = luc_model(bc_seq_c1=100.0, D=OLUA.K*1.2)
 
 plot(times, out1.F[ix], lab = "F - with_carb_ben_3a", linewidth = 2, linecolor="darkgreen", xlabel="years", title="Land allocation whith carb ben (maxD PF > maxD sf)", legend=:topright);
 plot!(times, out2.F[ix], lab = "F - with_carb_ben_3b", linecolor="darkgreen", ls=:dot);
@@ -267,7 +280,7 @@ plot!(times, out.V[ix] ./ out.S[ix],   lab = "with_carb_ben_3b", linecolor="dark
 
 # ------------------------------------------------------------------------------
 # #### Scen 3: `with_carb_ben_grp`: Carbon benefits (storage) accounted for (with growing carbon price)
-out = luc_model(bc_c1=100.0,bc_c2=(OLUA.σ-0.005)) # setting bc_c2=OLUA.σ doesn't solve
+out = luc_model(bc_seq_c1=100.0,bc_seq_c2=(OLUA.σ-0.005)) # setting bc_seq_c2=OLUA.σ doesn't solve
 
 plot(times, base.F[ix], lab = "F - base", linewidth = 2, linecolor="darkgreen", xlabel="years", title="Land allocation whith increasing carb benefits");
 plot!(times, out.F[ix], lab = "F - with_carb_ben_grp", linecolor="darkgreen", ls=:dot);
@@ -412,3 +425,119 @@ plot!(times, out.h[ix] .* out.V[ix] ./ out.S[ix],   lab = "cc_effect_ag", lineco
 # **Take home**
 #
 
+# ------------------------------------------------------------------------------
+# Carbon sequestration vs carbon substitution
+
+
+out_seq = luc_model(bc_seq_c1=100.0)
+out_sub = luc_model(bc_sub_c1=100.0)
+out_totc = luc_model(bc_seq_c1=100.0, bc_sub_c1=100.0)
+
+
+timesi = times100
+ixs    = ixs100
+
+marginal_arrays =  [base.co2_seq[ixs], base.co2_sub[ixs], base.co2_seq[ixs] .+ base.co2_sub[ixs],
+                    out_seq.co2_seq[ixs], out_seq.co2_sub[ixs], out_seq.co2_seq[ixs] .+ out_seq.co2_sub[ixs],
+                    out_sub.co2_seq[ixs], out_sub.co2_sub[ixs], out_sub.co2_seq[ixs] .+ out_sub.co2_sub[ixs],
+                    out_totc.co2_seq[ixs], out_totc.co2_sub[ixs], out_totc.co2_seq[ixs] .+ out_totc.co2_sub[ixs]]
+cumulative_arrays = [cumsum(a .* step) for a in marginal_arrays]
+
+marg_lims = (minimum(minimum.(marginal_arrays)), maximum(maximum.(marginal_arrays)))
+cum_lims = (minimum(minimum.(cumulative_arrays)), maximum(maximum.(cumulative_arrays)))
+
+# Yeary values...
+p_base_m = plot(timesi, base.co2_seq[ixs], lab = "Sequestered carbon", linewidth = 1, linecolor="grey", title="No carbon evaluation", ls=:dot, ylabel="Mt CO₂ / y", ylims=marg_lims,xformatter=Returns(""), titlefontsize=12);
+plot!(p_base_m, timesi, base.co2_sub[ixs], lab = "Substituted carbon", linewidth = 1, linecolor="grey", ls=:dash);
+plot!(p_base_m, timesi, base.co2_seq[ixs] .+ base.co2_sub[ixs], lab = "Total", linewidth = 2, linecolor="grey", ls=:solid);
+
+p_seq_m = plot(timesi, out_seq.co2_seq[ixs], lab = nothing, linewidth = 1, linecolor="darkgreen", ls=:dot, ylims=marg_lims,title="Seq evaluation",formatter=Returns(""), titlefontsize=12);
+plot!(p_seq_m, timesi, out_seq.co2_sub[ixs], lab = nothing, linewidth = 1, linecolor="darkgreen", ls=:dash);
+plot!(p_seq_m, timesi, out_seq.co2_seq[ixs] .+ out_seq.co2_sub[ixs], lab = nothing, linewidth = 2, linecolor="darkgreen", ls=:solid);
+
+p_sub_m = plot(timesi, out_sub.co2_seq[ixs], lab = nothing, linewidth = 1, linecolor="blue", ls=:dot, ylims=marg_lims,title="Sub evaluation",formatter=Returns(""), titlefontsize=12);
+plot!(p_sub_m, timesi, out_sub.co2_sub[ixs], lab = nothing, linewidth = 1, linecolor="blue", ls=:dash);
+plot!(p_sub_m, timesi, out_sub.co2_seq[ixs] .+ out_sub.co2_sub[ixs], lab = nothing, linewidth = 2, linecolor="blue", ls=:solid);
+
+p_totc_m = plot(timesi, out_totc.co2_seq[ixs], lab = nothing, linewidth = 1, linecolor="sienna", ls=:dot, ylims=marg_lims,title="Seq+sub evaluation",formatter=Returns(""), titlefontsize=12);
+plot!(p_totc_m, timesi, out_totc.co2_sub[ixs], lab = nothing, linewidth = 1, linecolor="sienna", ls=:dash);
+plot!(p_totc_m, timesi, out_totc.co2_seq[ixs] .+ out_totc.co2_sub[ixs], lab = nothing, linewidth = 2, linecolor="sienna", ls=:solid);
+
+# Cumulative values...
+p_base_c = plot(timesi, cumsum(base.co2_seq[ixs] .* step), lab = nothing, linewidth = 1, linecolor="grey", ls=:dot, ylabel="Cum Mt CO₂", ylims=cum_lims);
+plot!(p_base_c, timesi, cumsum(base.co2_sub[ixs] .* step), lab = nothing, linewidth = 1, linecolor="grey", ls=:dash);
+plot!(p_base_c, timesi, cumsum((base.co2_seq[ixs] .+ base.co2_sub[ixs]) .* step), lab = nothing, linewidth = 2, linecolor="grey", ls=:solid);
+
+p_seq_c = plot(timesi, cumsum(out_seq.co2_seq[ixs] .* step), lab = nothing, linewidth = 1, linecolor="darkgreen", xlabel="years", ls=:dot, ylims=cum_lims,yformatter=Returns(""));
+plot!(p_seq_c, timesi, cumsum(out_seq.co2_sub[ixs] .* step), lab = nothing, linewidth = 1, linecolor="darkgreen", ls=:dash, ylims=cum_lims);
+plot!(p_seq_c, timesi, cumsum((out_seq.co2_seq[ixs] .+ out_seq.co2_sub[ixs]) .* step), lab = nothing, linewidth = 2, linecolor="darkgreen", ls=:solid, ylims=cum_lims);
+
+p_sub_c = plot(timesi, cumsum(out_sub.co2_seq[ixs] .* step), lab = nothing, linewidth = 1, linecolor="blue", ls=:dot, ylims=cum_lims,yformatter=Returns(""));
+plot!(p_sub_c, timesi, cumsum(out_sub.co2_sub[ixs] .* step), lab = nothing, linewidth = 1, linecolor="blue", ls=:dash);
+plot!(p_sub_c, timesi, cumsum((out_sub.co2_seq[ixs] .+ out_sub.co2_sub[ixs]) .* step), lab = nothing, linewidth = 2, linecolor="blue", ls=:solid);
+
+p_totc_c = plot(timesi, cumsum(out_totc.co2_seq[ixs] .* step), lab = nothing, linewidth = 1, linecolor="sienna", ls=:dot, ylims=cum_lims,yformatter=Returns(""));
+plot!(p_totc_c, timesi, cumsum(out_totc.co2_sub[ixs] .* step), lab = nothing, linewidth = 1, linecolor="sienna", ls=:dash);
+plot!(p_totc_c, timesi, cumsum((out_totc.co2_seq[ixs] .+ out_totc.co2_sub[ixs]) .* step), lab = nothing, linewidth = 2, linecolor="sienna", ls=:solid);
+
+plot(p_base_m,p_seq_m,p_sub_m,p_totc_m,p_base_c,p_seq_c,p_sub_c,p_totc_c, layout = (2,4),size=(1200,600),left_margin = [20px -10px], bottom_margin = [30px -30px])
+
+savefig("carbon_out.svg")
+
+# The same, but now only energy substitution:
+
+
+out_seq = luc_model(bc_seq_c1=100.0,co2sub=0.264)
+out_sub = luc_model(bc_sub_c1=100.0,co2sub=0.264)
+out_totc = luc_model(bc_seq_c1=100.0, bc_sub_c1=100.0),co2sub=0.264
+
+
+timesi = times100
+ixs    = ixs100
+
+marginal_arrays =  [base.co2_seq[ixs], base.co2_sub[ixs], base.co2_seq[ixs] .+ base.co2_sub[ixs],
+                    out_seq.co2_seq[ixs], out_seq.co2_sub[ixs], out_seq.co2_seq[ixs] .+ out_seq.co2_sub[ixs],
+                    out_sub.co2_seq[ixs], out_sub.co2_sub[ixs], out_sub.co2_seq[ixs] .+ out_sub.co2_sub[ixs],
+                    out_totc.co2_seq[ixs], out_totc.co2_sub[ixs], out_totc.co2_seq[ixs] .+ out_totc.co2_sub[ixs]]
+cumulative_arrays = [cumsum(a .* step) for a in marginal_arrays]
+
+marg_lims = (minimum(minimum.(marginal_arrays)), maximum(maximum.(marginal_arrays)))
+cum_lims = (minimum(minimum.(cumulative_arrays)), maximum(maximum.(cumulative_arrays)))
+
+# Yeary values...
+p_base_m = plot(timesi, base.co2_seq[ixs], lab = "Sequestered carbon", linewidth = 1, linecolor="grey", title="No carbon evaluation", ls=:dot, ylabel="Mt CO₂ / y", ylims=marg_lims,xformatter=Returns(""), titlefontsize=12);
+plot!(p_base_m, timesi, base.co2_sub[ixs], lab = "Substituted carbon", linewidth = 1, linecolor="grey", ls=:dash);
+plot!(p_base_m, timesi, base.co2_seq[ixs] .+ base.co2_sub[ixs], lab = "Total", linewidth = 2, linecolor="grey", ls=:solid);
+
+p_seq_m = plot(timesi, out_seq.co2_seq[ixs], lab = nothing, linewidth = 1, linecolor="darkgreen", ls=:dot, ylims=marg_lims,title="Seq evaluation",formatter=Returns(""), titlefontsize=12);
+plot!(p_seq_m, timesi, out_seq.co2_sub[ixs], lab = nothing, linewidth = 1, linecolor="darkgreen", ls=:dash);
+plot!(p_seq_m, timesi, out_seq.co2_seq[ixs] .+ out_seq.co2_sub[ixs], lab = nothing, linewidth = 2, linecolor="darkgreen", ls=:solid);
+
+p_sub_m = plot(timesi, out_sub.co2_seq[ixs], lab = nothing, linewidth = 1, linecolor="blue", ls=:dot, ylims=marg_lims,title="Sub evaluation",formatter=Returns(""), titlefontsize=12);
+plot!(p_sub_m, timesi, out_sub.co2_sub[ixs], lab = nothing, linewidth = 1, linecolor="blue", ls=:dash);
+plot!(p_sub_m, timesi, out_sub.co2_seq[ixs] .+ out_sub.co2_sub[ixs], lab = nothing, linewidth = 2, linecolor="blue", ls=:solid);
+
+p_totc_m = plot(timesi, out_totc.co2_seq[ixs], lab = nothing, linewidth = 1, linecolor="sienna", ls=:dot, ylims=marg_lims,title="Seq+sub evaluation",formatter=Returns(""), titlefontsize=12);
+plot!(p_totc_m, timesi, out_totc.co2_sub[ixs], lab = nothing, linewidth = 1, linecolor="sienna", ls=:dash);
+plot!(p_totc_m, timesi, out_totc.co2_seq[ixs] .+ out_totc.co2_sub[ixs], lab = nothing, linewidth = 2, linecolor="sienna", ls=:solid);
+
+# Cumulative values...
+p_base_c = plot(timesi, cumsum(base.co2_seq[ixs] .* step), lab = nothing, linewidth = 1, linecolor="grey", ls=:dot, ylabel="Cum Mt CO₂", ylims=cum_lims);
+plot!(p_base_c, timesi, cumsum(base.co2_sub[ixs] .* step), lab = nothing, linewidth = 1, linecolor="grey", ls=:dash);
+plot!(p_base_c, timesi, cumsum((base.co2_seq[ixs] .+ base.co2_sub[ixs]) .* step), lab = nothing, linewidth = 2, linecolor="grey", ls=:solid);
+
+p_seq_c = plot(timesi, cumsum(out_seq.co2_seq[ixs] .* step), lab = nothing, linewidth = 1, linecolor="darkgreen", xlabel="years", ls=:dot, ylims=cum_lims,yformatter=Returns(""));
+plot!(p_seq_c, timesi, cumsum(out_seq.co2_sub[ixs] .* step), lab = nothing, linewidth = 1, linecolor="darkgreen", ls=:dash, ylims=cum_lims);
+plot!(p_seq_c, timesi, cumsum((out_seq.co2_seq[ixs] .+ out_seq.co2_sub[ixs]) .* step), lab = nothing, linewidth = 2, linecolor="darkgreen", ls=:solid, ylims=cum_lims);
+
+p_sub_c = plot(timesi, cumsum(out_sub.co2_seq[ixs] .* step), lab = nothing, linewidth = 1, linecolor="blue", ls=:dot, ylims=cum_lims,yformatter=Returns(""));
+plot!(p_sub_c, timesi, cumsum(out_sub.co2_sub[ixs] .* step), lab = nothing, linewidth = 1, linecolor="blue", ls=:dash);
+plot!(p_sub_c, timesi, cumsum((out_sub.co2_seq[ixs] .+ out_sub.co2_sub[ixs]) .* step), lab = nothing, linewidth = 2, linecolor="blue", ls=:solid);
+
+p_totc_c = plot(timesi, cumsum(out_totc.co2_seq[ixs] .* step), lab = nothing, linewidth = 1, linecolor="sienna", ls=:dot, ylims=cum_lims,yformatter=Returns(""));
+plot!(p_totc_c, timesi, cumsum(out_totc.co2_sub[ixs] .* step), lab = nothing, linewidth = 1, linecolor="sienna", ls=:dash);
+plot!(p_totc_c, timesi, cumsum((out_totc.co2_seq[ixs] .+ out_totc.co2_sub[ixs]) .* step), lab = nothing, linewidth = 2, linecolor="sienna", ls=:solid);
+
+plot(p_base_m,p_seq_m,p_sub_m,p_totc_m,p_base_c,p_seq_c,p_sub_c,p_totc_c, layout = (2,4),size=(1200,600),left_margin = [20px -10px], bottom_margin = [30px -30px])
+
+savefig("carbon_out_sub_onlyenergy.svg")

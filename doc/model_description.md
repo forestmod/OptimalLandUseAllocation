@@ -97,15 +97,14 @@ Finally, equation (3) is a static efficiency condition in terms of harvest inten
 
 # Numerical implementation
 
+Although we wanted to apply our model to realistic data, we don't currently have a reliable estimate of the parameters of the benefit and cost functions.
+Therefore, in order to avoid any misinterpretation of our paper as a policy analysis and our results as normative, we decided to apply it to a fictional region, which we call 'Lisarb'.
 
-While we did want to apply our model to realistic data, we don't have at this time reliable estimate of the parameters of the benefits and cost functions.
-In order to avoid any misinterpretation of our paper as a policy analysis and our results as normative, we therefore decided to apply it to a fictional region, which we call 'Lisarb'.
-
-Lisarb is a large region with significant forest resources. Specifically, it has a land surface of 851.5 Mha, of which 57.0% are natural, primary forests, 1.3% are secondary, plantation forests and 28.0% is agricultural land.
+Lisarb is a large region with significant forest resources. Specifically, it has a land area of 851.5 Mha, of which 57.0% is natural primary forest, 1.3% is secondary plantation forest and 28.0% is agricultural land.
 
 ## Functional forms
 
-All costs and benefits are in 10^6 US$. Parameters on the left of the semi-column are endogenous variables computed at each time mpont by the optimization routine, whereas parameters on the right are exogenous and fixed for the whole simulation period.
+All costs and benefits are expressed in 10^6 US$. Parameters on the left of the semi-column are endogenous variables calculated by the optimisation routine at each time point, while parameters on the right are exogenous and fixed for the whole simulation period.
 
 | Name                                   | Function      |
 | -------------------------------------  | ------------- | 
@@ -146,7 +145,7 @@ The `base` scenario assumes the following exogenous parameters. Each individual 
 
 ### Costs and benefits coefficients
 
-The following table provides the values of all the coefficients appearing in the benefit and cost functions. While power coefficients (influencing the degree of curvature of the functions) are simply assumed, the multipliers are calibrated in such a way that the initial values of the relevant costs or benefits assume realistic values. 
+The following table gives the values of all the coefficients that appear in the benefit and cost functions. While the power coefficients (which influence the degree of curvature of the functions) are simply assumed, the multipliers are calibrated so that the initial values of the relevant costs or benefits assume realistic values.
 
 | Coef | Interpretation | Value | Origin |
 | ---- | -------------- | ----- | ------ |

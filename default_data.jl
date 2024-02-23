@@ -30,6 +30,8 @@ D          = (_tot_vol - V₀) / F₀  # Density of the primary forest (constant
 σ          = 0.04 # Discount rate 
 K          = 600  # Maximum density of the secondary forest (i.e. carrying capacity)
 γ          = 0.1 # Growth rate of the logistic function in terms of density
+co2seq     = 0.907 # Tons of CO2 eq sequestrated by 1 cubic meter of wood (source: mean of Lobianco et oth. (2016) "Carbon mitigation potential of the French forest sector under threat of combined physical and market impacts due to climate change", Table 2)
+co2sub     = 0.264+0.579 # Tons of CO2 eq substituted (resp. energy and material) by 1 cubic meter of timber (source: mean of Lobianco et oth. (2016) "Carbon mitigation potential of the French forest sector under threat of combined physical and market impacts due to climate change", Table 2)
 # --------
 benv_c2    = 1/2  # Power of the environmental benefit
 """
@@ -64,21 +66,38 @@ Hence it is such that ben_wood is in M\$
 """
 bwood_c1   = 1.5*100.756304548882 * (d₀*D + h₀*V₀/S₀) / ((d₀*D + h₀*V₀/S₀)^bwood_c2 ) # Multiplier of the wood-use benefits
 # --------
-bc_c2      = 0             # Carbon price growth rate
+bc_seq_c2      = 0             # Carbon (seq) price growth rate
 """
-Multiplier of the carbon benefits
+Multiplier of the carbon (sequestered) benefits
 
-bc_c1 is calibrated such that:
-bc_c1 = (100) * ΔV
+bc_seq_c1 is calibrated such that:
+bc_seq_c1 = (100) * ΔV
 That is, the carbon benefits is equal to the \$/m^3 value of (assumed) carbon value multiplied the initial ΔV, the total
 delta forest volumes, i.e. natural growt of secondary forest less harvested secondary forest less harvested primary
 forest volumes (in Mm^3)
 Hence it is such that ben_carbon is in M\$
 Note that here we have:
-bc_c1*exp(bc_c2 * t) * ΔV  [M\$] =  100 * ΔV [M\$]
-So ΔV cancel it out and being interested in start time, so does exp(bc_c2 * t)
+bc_seq_c1*exp(bc_seq_c2 * t) * ΔV  [M\$] =  100 * ΔV [M\$]
+So ΔV cancel it out and being interested in start time, so does exp(bc_seq_c2 * t)
 """
-bc_c1      = 0.0 #100   # Carbon price init price
+bc_seq_c1      = 0.0 #100   # Carbon price init price
+# --------
+bc_sub_c2      = 0             # Carbon price growth rate
+"""
+Multiplier of the carbon (substituted) benefits
+
+bc_seq_c1 is calibrated such that:
+bc_seq_c1 = (100) * ΔV
+That is, the carbon benefits is equal to the \$/m^3 value of (assumed) carbon value multiplied the initial ΔV, the total
+delta forest volumes, i.e. natural growt of secondary forest less harvested secondary forest less harvested primary
+forest volumes (in Mm^3)
+Hence it is such that ben_carbon is in M\$
+Note that here we have:
+bc_seq_c1*exp(bc_seq_c2 * t) * ΔV  [M\$] =  100 * ΔV [M\$]
+So ΔV cancel it out and being interested in start time, so does exp(bc_seq_c2 * t)
+"""
+bc_sub_c1      = 0.0 #100   # Carbon price init price
+
 # --------
 chpf_c2    = 1 #2 1  # Power of the harvesting costs of primary forest (harvested area)
 chpf_c3    = -4 #-16 -2  # Power of the harvesting costs of primary forest (primary forest area)
