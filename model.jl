@@ -130,10 +130,10 @@ function luc_model(;
   @constraint(m, h(0)  == h₀)
   @constraint(m, r(0)  == r₀)
   #@constraint(m, r(0)  == 0)
-
+  >
 
   # Other conditions...
-  @constraint(m, (F+S+A)  == (F₀+S₀+A₀) )
+  @constraint(m, tot_land, (F+S+A)  == (F₀+S₀+A₀) )
   @constraint(m, d <= F)
   @constraint(m, h <= S)
   #@constraint(m, h == 0)
@@ -177,10 +177,11 @@ function luc_model(;
   h_opt    = value.(h)
   r_opt    = value.(r)
   
-  pF       = dual.(dA_pf)
-  pS       = dual.(dA_sf)
-  pA       = dual.(dA_ag)
-  pV       = dual.(dV_sf)
+  pF       = .- dual.(dA_pf)
+  pS       = .- dual.(dA_sf)
+  pA       = .- dual.(dA_ag)
+  pV       = .- dual.(dV_sf)
+  pTL      = .- dual.(tot_land)
 
   ts       = supports(t)
   opt_obj  = objective_value(m) 
@@ -201,7 +202,7 @@ function luc_model(;
           ben_env = ben_env_opt, ben_agr = ben_agr_opt, ben_wood= ben_wood_opt, ben_carbon_seq = ben_carbon_seq_opt, ben_carbon_sub = ben_carbon_sub_opt,
           cost_pfharv = cost_pfharv_opt, cost_sfharv = cost_sfharv_opt, cost_sfreg = cost_sfreg_opt,
           welfare = welfare_opt, co2_seq = co2_seq_opt, co2_sub = co2_sub_opt, 
-          pF=pF, pS=pS, pA=pA, pV=pV
+          pF=pF, pS=pS, pA=pA, pV=pV, pTL=pTL
           )
 end
 

@@ -124,7 +124,7 @@ Hence it is such that cost_sfharv is in M\$
 """
 chsf_c1    = 5.0 * (h₀*V₀/S₀) / ((h₀*V₀/S₀)^chsf_c2)   # Multiplier of the harvesting costs of secondary forest
 # --------
-crsf_c2    = 0    # Power of the regeneration costs of secondary forest
+crsf_c2    = 1    # Power of the regeneration costs of secondary forest
 """
 Multiplier of the secondary forest regeneration costs
 
