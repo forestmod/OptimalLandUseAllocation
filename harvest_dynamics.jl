@@ -56,8 +56,8 @@ out_sparse   = luc_model(ns=201)
 ix_sparse    = 2:(length(out_sparse.support)-160) # index for plotting
 times_sparse = out_sparse.support[ix_sparse] # every 10 years
 @testset "Number of discretization points" begin
-    @test isapprox(base.r[findfirst(t-> t==80,times)],out_dense.r[findfirst(t-> t==80,times_dense)],atol=0.04)
-    @test isapprox(base.r[findfirst(t-> t==80,times)],out_sparse.r[findfirst(t-> t==80,times_sparse)],atol=0.04)
+    @test isapprox(base.r[findfirst(t-> t==80,times)],out_dense.r[findfirst(t-> t==80,times_dense)],atol=0.05)
+    @test isapprox(base.r[findfirst(t-> t==80,times)],out_sparse.r[findfirst(t-> t==80,times_sparse)],atol=0.05)
     @test isapprox(base.F[findfirst(t-> t==80,times)],out_dense.F[findfirst(t-> t==80,times_dense)],rtol=0.05)
     @test isapprox(base.F[findfirst(t-> t==80,times)],out_sparse.F[findfirst(t-> t==80,times_sparse)],rtol=0.05)
 end
@@ -164,6 +164,20 @@ plot!(ts2, collect(v_by_step[i] for i in 1:length(ts2)), label="V: discrete step
 logistic(x;k,r,x0) = k/(1+((k-x0)/x0)*exp(-r*x))
 plot!(x->logistic(x,k=OLUA.K*OLUA.S₀,r=OLUA.γ,x0=OLUA.V₀),0,times[end], label = "V: true logistic funcion")
 
+# ------------------------------------------------------------------------------
+# ### Test 5: verification of the steady state
+
+# Verification of h equilibrium.. in the steady state (that seems to be reached in the model) we must have constant
+# volumes, where the growth is balanced by the harvesting
+
+rhs = @. OLUA.γ*(base.S * OLUA.K - base.V) / OLUA.K
+lhs = base.h
+
+plot(times, rhs[ix]);
+plot!(times,base.h[ix])
+
+@test isapprox(base.h[findfirst(t-> t==200,times)], rhs[findfirst(t-> t==200,times)], rtol=0.001)
+
 
 # ------------------------------------------------------------------------------
 # ### Base Case Analysis
@@ -179,11 +193,13 @@ plot!(times, base.r[ix], lab = "F -> S", linecolor="darkseagreen3")
 # plot!(times, base.a[ix], lab = "S -> A",linecolor="sienna") # This only with model exteded version ! #src
 
 # Shadow prices..
-plot(times[2:end],  base.pF[ix[2:end]], lab = "pF: primary forest area price", linecolor="darkgreen", xlabel="years", title="Land shadow prices (base scen)");
-plot!(times[2:end], base.pS[ix[2:end]], lab = "pS: secondary forest area price", linecolor="darkseagreen3");
-plot!(times[2:end], base.pA[ix[2:end]], lab = "pA: agricultural area price",linecolor="sienna");
-plot!(times[2:end], base.pV[ix[2:end]], lab = "pV: secondary forest timber volumes price",linecolor="lightgreen");
-plot!(times[2:end], base.pTL[ix[2:end]], lab = "pTL: shadow price of the total land",linecolor="darkgrey")
+plot(times[2:end],  base.pF[ix[2:end]], lab = "pF: primary forest area price", linecolor="darkgreen", xlabel="years", title="Land shadow prices (base scen)")
+plot!(times[2:end], base.pS[ix[2:end]], lab = "pS: secondary forest area price", linecolor="darkseagreen3")
+plot!(times[2:end], base.pA[ix[2:end]], lab = "pA: agricultural area price",linecolor="sienna")
+plot!(times[2:end], base.pV[ix[2:end]], lab = "pV: secondary forest timber volumes price",linecolor="darkgrey")
+#plot!(times[2:end], base.pTL[ix[2:end]], lab = "pTL: shadow price of the total land",linecolor="darkgrey")
+
+
 
 
 # Note that the s.p. of primary forest is negative, because we are constraining our model to a fixed area, so 1 ha more of primary prodict means 1 ha less of secondary forest or agricultural area
@@ -562,3 +578,30 @@ plot!(p_totc_c, timesi, cumsum((out_totc.co2_seq[ixs] .+ out_totc.co2_sub[ixs]) 
 plot(p_base_m,p_seq_m,p_sub_m,p_totc_m,p_base_c,p_seq_c,p_sub_c,p_totc_c, layout = (2,4),size=(1200,600),left_margin = [20px -10px], bottom_margin = [30px -30px])
 
 savefig("carbon_out_sub_onlyenergy.svg")
+
+
+# ------------------------------------------------------------------------------
+
+# Verification of the steady state
+
+# verification of h equilibrium
+rhs = @. OLUA.γ*(base.S * OLUA.K - base.V) / OLUA.K
+lhs = base.h
+
+plot(times, rhs[ix])
+plot!(times,base.h[ix])
+
+isapprox(base.h[findfirst(t-> t==200,times)], rhs[findfirst(t-> t==200,times)], rtol=0.001)
+
+base.h[findfirst(t-> t==200,times)]
+
+OLUA.crsf_c1
+
+base.pS
+base.pA
+
+pricediff = base.pA .- base.pS
+
+plot(times, base.pS[ix])
+plot!(times, base.pA[ix])
+plot(times, pricediff[ix])

@@ -3,7 +3,7 @@
 ## Symbols
 
 State variables:
-- `P`: Primary forests area
+- `F`: Primary forests area
 - `S`: Secondary forests area
 - `A`: Agriculture area
 - `V`: Timber volumes in secondary forest
@@ -30,23 +30,23 @@ Abbreviations:
 - h2: Harvested area of $PF$ can be allocated to either $SF$ or $AG$
 Question: why not area transfer possible from SF to A ? Aside adding complexity to the model, one reason is that in real world land is heterogeneous. If there has been an initial land allocation from PF to SF, it is likely that this choice woudn't change later. Modelling no land tranfer from SF to A is hence a way to implicitly consider heterogeneous land in our simple model.
 - h3: Harvesting of $SF$ doesn't change its area, i.e. if clear-cut, the area remains $SF$
-- h4: At each moment in time, benefits for the society depend from area of $PF$ (environmental benefits), sum of harvesting volumes of $PF$ and $SF$ (i.e. indifferentiated wood), area of $AG$
+- h4: At each moment in time, benefits for the society depend from area of $PF$ (environmental benefits), sum of harvesting volumes of $PF$ and $SF$ (i.e. indifferentiated wood), net growth of timber resources (carbon sequestration), area of $AG$
 - h5: Costs of harvesting $PF$ are inversely proportional to the area of $PF$
 - h6: The society can "control" the harvesting of primary forest $d$, the harvesting of secondary forest $h$ and the allocation of harvested primary forest
 
 
 ## Model constraints
-- $\dot P_t = - d_t$
+- $\dot F_t = - d_t$
 - $\dot S_t = r_t$
 - $\dot A_t = d_t - r_t$
-- $P_t + S_t + A_t = L$ (normalisation)
-- $d_t <= P_t$
+- $d_t <= F_t$
 - $h_t <= S_t$
 - $r_t <= d_t$
 - $\dot V_{t} = (V_t / S_t) * \gamma * (1 - V_t/ (S_t * K))*S_t -  h_t *(V_t/S_t)$ The first component is the volumes coming from growth, with the logistic equation expressed in terms of density, the second term is the harvested volumes. Note that here we ignore the instantateous growth (of volumes) from the new added area, but that's ok, as it tends to be zero when V=0 in the logistic equation. The expression on the RHS can be simplified to $V_t * \gamma  - V_t^2 * \gamma / (S_t * K) -  h_t *(V_t/S_t)$
+- $F_t, S_t, A_t, V_t, d_t, r_t, h_t >= 0$
 
 ## Welfare to maximise (on each time moment)
-- $W_{(t)} = b_e\{P\} + b_w\{d,h \frac{V}{S}\} + b_a\{A\}  - c_{p}\{d,P\}  - c_r\{r\} - c_s(h\frac{V}{S})$
+- $W_{(t)} = b_e\{F\} + b_w\{d,h \frac{V}{S}\} +  b_c\{d,h,V,S\} + b_a\{A\}  - c_{p}\{d,F\}  - c_r\{r\} - c_s(h\frac{V}{S})$
 
 ## Notes
 - Secondary forest is considered an highly aggregated level of forest stands at different ages
@@ -55,29 +55,27 @@ Question: why not area transfer possible from SF to A ? Aside adding complexity 
 ### Current time Hamiltonian
 
 (1) H_C = 
-      $b_e\{P_t\} + b_w\{d_t,h_t*V_t/S_t\} + b_a\{A_t\}$
-     - $c_{p}\{d_t,P_t\}  - c_r\{r_t\} - c_s\{h_t*V_t/S_t\}$
+      $b_e\{F_t\} + b_w\{d_t,h_t*V_t/S_t\} + b_c\{d_t,h_t,V_t,S_t\} + b_a\{A_t\}$
+     - $c_{p}\{d_t,F_t\}  - c_r\{r_t\} - c_s\{h_t*V_t/S_t\}$
      + $\lambda_t * (-d_t)$
      + $\phi_t * (r_t)$
      + $\mu_t * (d_t - r_t)$
      + $\rho_t * (V_t  * \gamma * (1 - V_t/ (S_t * K)) -  h_t *(V_t/S_t))$
-     + $\sigma_t * (L - P_t - S_t - A_t)$
 
 where:
-- $\lambda_t$: co-state variable of the state variable $P_t$
+- $\lambda_t$: co-state variable of the state variable $F_t$
 - $\phi_t$: co-state variable of the state variable $S_t$
 - $\mu_t$: co-state variable of the state variable $A_t$
 - $\rho_t$: co-state variable of the state variable $V_t$
-- $\sigma_t$: shadow price of the total land area $L$
 
 ### First order conditions
 
 Control variables: $d_t, h_t, r_t$ 
 
-- (2) $\frac{\partial H_C}{\partial d_t} = 0$ ⇒ $\frac{\partial b_w}{\partial d_t} - \frac{\partial c_p}{\partial d_t} - \lambda_t + \mu_t = 0$
-- (3) $\frac{\partial H_C}{\partial h_t} = 0$ ⇒ $\frac{\partial b_w}{\partial h_t} - \frac{\partial c_s}{\partial h_t} - \rho_t * \frac{V_t}{S_t} = 0$
-- (4) $\frac{\partial H_C}{\partial r_t} = 0$ ⇒ $-\frac{\partial c_r}{\partial r_t} + \phi_t - \mu_t = 0$
-- (5) $\frac{\partial H_C}{\partial \sigma_{t}} = 0$ ⇒ $(L - P_t - S_t - A_t) = 0$
+- (2) $\frac{\partial H_C}{\partial d_t} = 0$ ⇒ $\frac{\partial bw}{\partial d_t} + \frac{\partial bc}{\partial d_t} - \frac{\partial cd}{\partial d_t} - \lambda_t + \mu_t = 0$
+- (3) $\frac{\partial H_C}{\partial h_t} = 0$ ⇒ $\frac{\partial bw}{\partial h_t} + \frac{\partial bc}{\partial h_t}  - \frac{\partial ch}{\partial h_t} - \rho_t * \frac{V_t}{S_t} = 0$
+- (4) $\frac{\partial H_C}{\partial r_t} = 0$ ⇒ $-\frac{\partial cr}{\partial r_t} + \phi_t - \mu_t = 0$
+
 
 #### Interpretations
 Equations (2) and (4) can be interpreted as static efficiency rule regarding land transfer decisions.
@@ -87,7 +85,7 @@ Finally, equation (3) is a static efficiency condition in terms of harvest inten
 
 ### Equations of motion:
 
-- $\dot \lambda_t = \delta \lambda - \frac{\partial H_C}{\partial P_t} = \delta \lambda - \frac{\partial b_e}{\partial P_t } + \frac{\partial c_p}{\partial P_t } + \sigma_t$ 
+- $\dot \lambda_t = \delta \lambda - \frac{\partial H_C}{\partial F_t} = \delta \lambda - \frac{\partial b_e}{\partial F_t } + \frac{\partial c_p}{\partial F_t } + \sigma_t$ 
 - $\dot \phi_t = \delta \phi - \frac{\partial H_C}{\partial S_t} = \delta \phi - \frac{\partial b_w}{\partial S_t} + \frac{\partial c_s}{\partial S_t } - \frac{\rho_t V_t^2 \gamma}{S_t^2 K} - \frac{\rho_t V_t h_t}{S_t^2} + \sigma_t$
 - $\dot \mu_t = \delta \mu - \frac{\partial H_C}{\partial A_t} = \delta \mu - \frac{\partial b_a}{\partial A_t } + \sigma_t $
 - $\dot \rho_t = \delta \rho - \frac{\partial H_C}{\partial V_t} = \delta \rho - \frac{\partial b_w}{\partial V_t} + \frac{\partial c_s}{\partial V_t} - \rho_t \gamma + \frac{2 \rho_t V_t \gamma}{S_t K} + \frac{\rho_t h_t}{S_t} $
@@ -108,13 +106,13 @@ All costs and benefits are expressed in 10^6 US$. Parameters on the left of the 
 
 | Name                                   | Function      |
 | -------------------------------------  | ------------- | 
-| Environmental benefits                 | `ben_env(F;c1,c2) = c1*F^c2` |
-| Agricultural use benefits              | `ben_agr(A;c3,c4) = c3*A^c4` |
-| Timber use benefits                    | `ben_timber(S,V,d,h;c5,c6,D) = c5*(d * D + h * V/S)^c6` |
-| Carbon benefits                        | `ben_carbon(S,V,d,h,t; D,γ,K,c7,c8) = c7*exp(c8 * t) * (((V)*γ*(1-(V / (S * K) )) - h * (V/S)) - (d * D )  )` |
-| Harvesting primary forest costs        | `cost_pfharv(F,d;c9,c10,c11) = c9 * (d*D)^c10 * F^c11` |
-| Harvesting secondary forest costs      | `cost_sfharv(S,V,h;c12,c13) = c12 * (h * V/S)^c13` |
-| Regeneration of secondary forest costs | `cost_sfreg(r,h;c14,c15) = c14 * (r+h) ^ c15`|
+| Environmental benefits                 | `be(F;c1,c2) = c1*F^c2` |
+| Agricultural use benefits              | `ba(A;c3,c4) = c3*A^c4` |
+| Wood use benefits                      | `bw(S,V,d,h;c5,c6,D) = c5*(d * D + h * V/S)^c6` |
+| Carbon benefits                        | `bc(S,V,d,h,t; D,γ,K,c7,c8) = c7*exp(c8 * t) * (((V)*γ*(1-(V / (S * K) )) - h * (V/S)) - (d * D )  )` |
+| Harvesting primary forest costs        | `cd(F,d;c9,c10,c11) = c9 * (d*D)^c10 * F^c11` |
+| Harvesting secondary forest costs      | `ch(S,V,h;c12,c13) = c12 * (h * V/S)^c13` |
+| Regeneration of secondary forest costs | `cr(r,h;c14,c15) = c14 * (r+h) ^ c15`|
 
 The welfare (the objective of the maximisation) is then the sum of all benefits less the costs at each time point `t`, discounted by `exp(-t*σ)`.
 
@@ -149,20 +147,20 @@ The following table gives the values of all the coefficients that appear in the 
 
 | Coef | Interpretation | Value | Origin |
 | ---- | -------------- | ----- | ------ |
-| c1 | Multiplier of the environmental benefits | 17846 | `ben_env₀ = 810 * F₀` |
+| c1 | Multiplier of the environmental benefits | 17846 | `be₀ = 810 * F₀` |
 | c2 | Power of the environmental benefit | 1/2 | assumed |
-| c3 | Multiplier of the agricultural benefits | 9330 | `ben_agr₀ = 603 * A₀` |
+| c3 | Multiplier of the agricultural benefits | 9330 | `ba₀ = 603 * A₀` |
 | c4 | Power of the agricultural benefit | 1/2 | assumed |
-| c5 | Multiplier of the timber benefits | 1845 | `ben_timber₀ = 300 * hV₀` |
+| c5 | Multiplier of the timber benefits | 1845 | `bw₀ = 300 * hV₀` |
 | c6 | Power of the timber benefits | 1/2 |  assumed |
-| c7 | Multiplier of the carbon benefits | 0 | `ben_carbon₀ = 0 * ΔV₀` |
+| c7 | Multiplier of the carbon benefits | 0 | `bc₀ = 0 * ΔV₀` |
 | c8 | Growth rate of the carbon benefits | 0 |  assumed |
-| c9 | Multiplier of the PF harvesting costs | 5.55e11 | `cost_pfharv₀ = 10 * hV₀_pf` |
+| c9 | Multiplier of the PF harvesting costs | 5.55e11 | `cd₀ = 10 * hV₀_pf` |
 | c10 | Power of the harvesting costs of PF (on harvested area) | 1 |  assumed |
 | c11 | Power of the harvesting costs of PF (on area) | -4 |  assumed |
-| c12 | Multiplier of the SF harvesting costs | 5 | `cost_sfharv₀ = 5 * hV₀_sf` |
+| c12 | Multiplier of the SF harvesting costs | 5 | `ch₀ = 5 * hV₀_sf` |
 | c13 | Power of the harvesting costs of SF (on harvested area) | 1 |  assumed |
-| c14 | Multiplier of the SF regeneration costs | 17.8 | `cost_sfreg₀ = 50 * (r₀+h₀)` |
+| c14 | Multiplier of the SF regeneration costs | 17.8 | `cr₀ = 50 * (r₀+h₀)` |
 | c15 | Power of the harvesting costs of SF (on harvested area) | 0 |  assumed |
 
 
@@ -216,3 +214,28 @@ The following table gives the values of all the coefficients that appear in the 
 | cc_effect_pf | `D = D * 0.8` |
 | cc_effect_sf | `γ = γ-0.02` |
 | cc_effect_ag | `c3 = c3*0.8` |
+
+### Analysis of the steady state
+
+We can't analytically guarantee the presence of a steady state, nor study the path toward it. Assuming that a steady state is indeed possible (and section x will numerically show the presence of a steady state under a realistic parametrization) we can characterize it.
+
+In the steady state we don't observe variations in the areas nor in the SF volumes and areas, i.e.:
+
+$\dot F = \dot S = \dot A = \dot V = 0$
+
+In our model we can only transfer land from PF to SF and AG. If we assume that the land rent from PF is lower than those of SF and AG, we can also deduce that at the equilibrium the co-state variables associated to PF, SF, AF, V (that is, $\lambda$, $\phi$, $\mu$, $\eta$) must be constant, the same, and equal to zero.
+
+We can then find the follow:
+$d = 0$, $r=0$ (from the equation of motion of the area state variables)
+$h = S\gamma - \frac{\gamma V}{K}$ (from the eq. of motion of the volumes)
+From equations 6 and 8  we find:
+$\frac{\partial b_a}{\partial A} = \frac{\partial b_e}{\partial F} - \frac{\partial c_d}{\partial F}$
+From eq 9 and eq of $h$ above we found:
+$-\delta \rho  + \frac{\gamma \rho V}{S K} = \frac{\partial b_w}{\partial V} + \frac{\partial c_h}{\partial V}$ that implies $\frac{\partial b_w}{\partial V} = \frac{\partial c_h}{\partial V}$
+
+
+
+
+
+that in our functional forms becomes $c_3 * c_4 * A ^{c_4 -1} = c_1 * c_2 * F^{c_2 -1} - c_9*D^{c_{10}}*c11*F^{c_{11} -1}$
+
