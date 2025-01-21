@@ -16,7 +16,13 @@ export luc_model, welfare,
 ben_env(F;benv_c1=benv_c1,benv_c2=benv_c2)                       = (benv_c1*F^benv_c2) # Environmental benefits [M$]
 ben_agr(A;bagr_c1=bagr_c1,bagr_c2=bagr_c2)                       = (bagr_c1*A^bagr_c2) # Agricultural use benefits [M$]
 ben_wood(S,V,d,h;bwood_c1=bwood_c1,bwood_c2=bwood_c2,D=D)        = (bwood_c1*(d * D + h * V/S)^bwood_c2) # Wood use benefits [M$] - Here there is an important simplification that I harvest the forest homogeneously (instead of selectively the mature one)
-ben_carbon_seq(S,V,d,h,t; D=D,γ=γ,K=K,bc_seq_c1=bc_seq_c1,bc_seq_c2=bc_seq_c2,co2seq=co2seq)  = bc_seq_c1*exp(bc_seq_c2 * t) * (((V)*γ*(1-(V / (S * K) )) - h * (V/S)) - (d * D )  ) * co2seq # Carbon sequestration benefits [M$] - here we don't yeat know var_vol_sf, so rewriting it explicitly
+function ben_carbon_seq(S,V,d,h,t; D=D,γ=γ,K=K,bc_seq_c1=bc_seq_c1,bc_seq_c2=bc_seq_c2,co2seq=co2seq,damage_rate=damage_rate,tdamage=tdamage,T=T,ns=ns)
+  # Carbon sequestration benefits [M$] - here we don't yeat know var_vol_sf, so rewriting it explicitly
+  dr = InfiniteOpt.ifelse(t < tdamage, 0.0,  InfiniteOpt.ifelse(t > tdamage+(T/ns), 0.0, damage_rate)     ) * ns/T # must be adjusted as it is "repeated"
+  return bc_seq_c1*exp(bc_seq_c2 * t) * ((V*γ*(1-(V / (S * K) )) - h * (V/S) - dr*V  )   - (d * D )  ) * co2seq 
+end
+
+
 ben_carbon_sub(S,V,d,h,t; D=D,bc_sub_c1=bc_sub_c1,bc_sub_c2=bc_sub_c2,co2sub=co2sub)  = bc_sub_c1*exp(bc_sub_c2 * t) * (d * D + h * V/S)  * co2sub # Carbon substitution benefits [M$]
 cost_pfharv(F,d;chpf_c1=chpf_c1,chpf_c2=chpf_c2,chpf_c3=chpf_c3) = (chpf_c1 * (d*D)^chpf_c2 * F^chpf_c3) # Harvesting primary forest costs [€]
 cost_sfharv(S,V,h;chsf_c1=chsf_c1,chsf_c2=chsf_c2)               = (chsf_c1 * (h * V/S)^chsf_c2)  # Harvesting secondary forest costs [€]
@@ -95,7 +101,11 @@ function luc_model(;
     optimizer   = optimizer,   # Desired optimizer (solver)
     opt_options = opt_options, # Optimizer options
     T           = T,     # Time horizont
-    ns          = ns     # nNmber of supports on which to divide the time horizon
+    ns          = ns,     # nNmber of supports on which to divide the time horizon
+
+    # Risk module
+    damage_rate = damage_rate,
+    tdamage     = tdamage
   ) 
 
   # Functions...
@@ -105,7 +115,11 @@ function luc_model(;
   var_area_pf(d)          = -d
   var_area_sf(r)          = r
   var_area_ag(d,r)        = d - r
-  var_vol_sf(S,V,h;γ=γ,K=K) = (V)*γ*(1-(V / (S * K) )) - h * (V/S) # Mm³ See https://en.wikipedia.org/wiki/Logistic_function#In_ecology:_modeling_population_growth (the logistic growth is in terms of density: (V_sf/A_sf)*γ*(1-((V_sf/A_sf) /maxD ))*A_sf -hV_sf )
+  function var_vol_sf(S,V,h,t;γ=γ,K=K,damage_rate=damage_rate,tdamage=tdamage,T=T,ns=ns)
+    # Mm³ See https://en.wikipedia.org/wiki/Logistic_function#In_ecology:_modeling_population_growth (the logistic growth is in terms of density: (V_sf/A_sf)*γ*(1-((V_sf/A_sf) /maxD ))*A_sf -hV_sf )
+    dr = InfiniteOpt.ifelse(t < tdamage, 0.0,  InfiniteOpt.ifelse(t > tdamage+(T/ns), 0.0, damage_rate)     ) * ns/T # must be adjusted as it is "repeated"
+    return V*γ*(1-(V / (S * K) )) - h * (V/S) - dr*V
+  end 
   # Here there is an important simplification that I harvest the forest homogeneously (instead of selectively the mature one)
 
   solver = optimizer_with_attributes(optimizer, opt_options...)
@@ -147,7 +161,7 @@ function luc_model(;
   @constraint(m, dA_pf, deriv(F, t) == var_area_pf(d))
   @constraint(m, dA_sf, deriv(S, t) == var_area_sf(r))
   @constraint(m, dA_ag, deriv(A, t) == var_area_ag(d,r))
-  @constraint(m, dV_sf, deriv(V, t) == var_vol_sf(S,V,h))
+  @constraint(m, dV_sf, deriv(V, t) == var_vol_sf(S,V,h,t))
 
 
   @objective(m, Max, integral(

@@ -18,6 +18,7 @@ d₀ = F₀/1000          # Init prim forest harvesting area (used only to compu
 h₀ = S₀/100           # Init sec forest harvesting area (used only to compute parameter and start value in the sense of optimisation start)  [M ha]
 r₀ = 0.5 * d₀         # Init sec forest regeneration area (used only to compute parameter and start value in the sense of optimisation start)  [M ha]
 
+
 # Parameters
 # Sources:
 # - bwood_c1(USD/m^3): production and export value from FAOSTAT 2020 https://www.fao.org/faostat/en/#data/FO
@@ -143,3 +144,6 @@ T           = 2000             # Time horizon (years)
 ns          = 401;             # Number of points in the time grid - seems not to influence much the results (good!)
 
 
+# Risk module
+damage_rate = 0.0
+tdamage     = 80
