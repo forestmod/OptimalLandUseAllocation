@@ -8,7 +8,7 @@ cd(@__DIR__)
 using Pkg
 Pkg.activate(".")
 #Pkg.resolve()
-#Pkg.Instantiate()
+#Pkg.instantiate()
 
 using Plots
 using Plots.PlotMeasures
