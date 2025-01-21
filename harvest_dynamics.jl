@@ -17,8 +17,8 @@ using Revise
 using Test
 
 # ### Load the model structure (function "luc_model")
-includet("model.jl")
-using .OLUA
+push!(LOAD_PATH,joinpath(@__DIR__,"lib"))
+using OLUA
 
 
 # ------------------------------------------------------------------------------
@@ -526,7 +526,7 @@ savefig("carbon_out.svg")
 
 out_seq = luc_model(bc_seq_c1=100.0,co2sub=0.264)
 out_sub = luc_model(bc_sub_c1=100.0,co2sub=0.264)
-out_totc = luc_model(bc_seq_c1=100.0, bc_sub_c1=100.0),co2sub=0.264
+out_totc = luc_model(bc_seq_c1=100.0, bc_sub_c1=100.0,co2sub=0.264)
 
 
 timesi = times100
