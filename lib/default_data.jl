@@ -16,8 +16,9 @@ A₀ = 2_387_471 * 100  / 1_000_000 # Init Agricultural area [M ha]
 V₀ = 3_056_570_000 / 1_000_000    # Init timber volumes of secondary forests [M m^3]
 d₀ = F₀/1000          # Init prim forest harvesting area (used only to compute parameter and start value in the sense of optimisation start) [M ha]
 h₀ = S₀/100           # Init sec forest harvesting area (used only to compute parameter and start value in the sense of optimisation start)  [M ha]
-r₀ = 0.5 * d₀         # Init sec forest regeneration area (used only to compute parameter and start value in the sense of optimisation start)  [M ha]
-
+r_F₀ = 0.5 * d₀       # Init sec forest regeneration area from primary forest (used only to compute parameter and start value in the sense of optimisation start)  [M ha]
+r_A₀ = 0.0            # Init sec forest regeneration area from agriculture (used only to compute parameter and start value in the sense of optimisation start)  [M ha]
+a₀   = 0.0            # Init new agricutural area from secondary forest (used only to compute parameter and start value in the sense of optimisation start)  [M ha]
 
 # Parameters
 # Sources:
@@ -130,12 +131,12 @@ crsf_c2    = 1    # Power of the regeneration costs of secondary forest
 Multiplier of the secondary forest regeneration costs
 
 crsf_c1 is calibrated such that:
-cost_sfreg = 50 * (r+h)
+cost_sfreg = 50 * (r_F + r_A +h)
 That is, the forest regeneration cost of secondary forests is equal to the \$/ha cost (assumed) multiplied by the
 regeneration area of secondary forest (new regeneration from ex-primary forest area plus post-harvesting regeneration, in Mha)
 Hence it is such that cost_sfreg is in M\$
 """
-crsf_c1    = 50 * (r₀+h₀) / ((r₀+h₀)^crsf_c2) # Multiplier of the regeneration costs of secondary forest
+crsf_c1    = 50 * (r_F₀+r_A₀+h₀) / ((r_F₀+r_A₀+h₀)^crsf_c2) # Multiplier of the regeneration costs of secondary forest
 
 # Options
 optimizer   = Ipopt.Optimizer  # Desired optimizer (solver)

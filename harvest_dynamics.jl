@@ -56,16 +56,16 @@ out_sparse   = luc_model(ns=201)
 ix_sparse    = 2:(length(out_sparse.support)-160) # index for plotting
 times_sparse = out_sparse.support[ix_sparse] # every 10 years
 @testset "Number of discretization points" begin
-    @test isapprox(base.r[findfirst(t-> t==80,times)],out_dense.r[findfirst(t-> t==80,times_dense)],atol=0.05)
-    @test isapprox(base.r[findfirst(t-> t==80,times)],out_sparse.r[findfirst(t-> t==80,times_sparse)],atol=0.05)
+    @test isapprox(base.r_F[findfirst(t-> t==80,times)],out_dense.r_F[findfirst(t-> t==80,times_dense)],atol=0.05)
+    @test isapprox(base.r_F[findfirst(t-> t==80,times)],out_sparse.r_F[findfirst(t-> t==80,times_sparse)],atol=0.05)
     @test isapprox(base.F[findfirst(t-> t==80,times)],out_dense.F[findfirst(t-> t==80,times_dense)],rtol=0.05)
     @test isapprox(base.F[findfirst(t-> t==80,times)],out_sparse.F[findfirst(t-> t==80,times_sparse)],rtol=0.05)
 end
 
 # Graphically...
-plot(times, base.r[ix], xlabel="years", label="Base time point density (5 y)", title="SF reg area (flow) under different time densities");
-plot!(times_dense, out_dense.r[ix_dense], label="Dense time point density (2 y)");
-plot!(times_sparse, out_sparse.r[ix_sparse], label="Sparse time point density (10 y)")
+plot(times, base.r_F[ix], xlabel="years", label="Base time point density (5 y)", title="SF reg area (flow) under different time densities");
+plot!(times_dense, out_dense.r_F[ix_dense], label="Dense time point density (2 y)");
+plot!(times_sparse, out_sparse.r_F[ix_sparse], label="Sparse time point density (10 y)")
 #-
 plot(times, base.F[ix], xlabel="years", label="Base time point density (5 y)", title="Forest prim area (stock) under different time densities");
 plot!(times_dense, out_dense.F[ix_dense], label="Dense time point density (2 y)");
@@ -188,9 +188,10 @@ plot!(times, base.S[ix], lab = "S: secondary forest area", linecolor="darkseagre
 plot!(times, base.A[ix], lab = "A: agricultural area",linecolor="sienna")
 
 # Area transfers..
-plot(times,  base.d[ix] .- base.r[ix], lab = "F -> A", linecolor="darkgreen", xlabel="years", title="Land Areas transfers (base scen)");
-plot!(times, base.r[ix], lab = "F -> S", linecolor="darkseagreen3")
-# plot!(times, base.a[ix], lab = "S -> A",linecolor="sienna") # This only with model exteded version ! #src
+plot(times,  base.d[ix] .- base.r_F[ix], lab = "F -> A", linecolor="darkgreen", xlabel="years", title="Land Areas transfers (base scen)");
+plot!(times, base.r_F[ix], lab = "F -> S", linecolor="darkseagreen3");
+plot!(times, base.r_A[ix], lab = "A -> S", linecolor="darkseagreen2");
+plot!(times, base.a[ix], lab = "S -> A",linecolor="sienna") # This only with model exteded version ! #src
 
 # Shadow prices..
 plot(times[2:end],  base.pF[ix[2:end]], lab = "pF: primary forest area price", linecolor="darkgreen", xlabel="years", title="Land shadow prices (base scen)")
@@ -363,9 +364,9 @@ plot(times, base.V[ix]./ base.S[ix],   lab = "base", linewidth = 2, linecolor="d
 plot!(times, out.V[ix] ./ out.S[ix],   lab = "incr_timber_demand", linecolor="darkseagreen3", ls=:dot)
 #-
 plot(times, base.h[ix] , lab = "h - base", linewidth = 2, linecolor="darkgreen", xlabel="years", title="Harvested and regeneration area (increased wood demand)");
-plot!(times, base.r[ix] , lab = "r - base", linecolor="darkgreen", ls=:dot);
+plot!(times, base.r_F[ix] , lab = "r_F - base", linecolor="darkgreen", ls=:dot);
 plot!(times, out.h[ix] , lab = "h - incr_timber_demand", linewidth = 2, linecolor="darkseagreen3");
-plot!(times, out.r[ix] , lab = "r - incr_timber_demand", linecolor="darkseagreen3", ls=:dot)
+plot!(times, out.r_F[ix] , lab = "r_F - incr_timber_demand", linecolor="darkseagreen3", ls=:dot)
 # Shadow prices..
 plot(times[2:end],  out.pF[ix[2:end]], lab = "pF: primary forest area price", linecolor="darkgreen", xlabel="years", title="Land shadow prices (increased wood demand)");
 plot!(times[2:end], out.pS[ix[2:end]], lab = "pS: secondary forest area price", linecolor="darkseagreen3");
@@ -605,3 +606,54 @@ pricediff = base.pA .- base.pS
 plot(times, base.pS[ix])
 plot!(times, base.pA[ix])
 plot(times, pricediff[ix])
+
+# ----------------------------------------------------------------------------------------------------------------------------------------------
+# Risk analysis
+
+# Here we do not consider primary forest (we set env benefits very high)
+# First we check the effect of a (fully anticipated) storm without considering carbon, and then with carbon
+
+# Without carbon...
+baseout = luc_model(benv_c1=1000*OLUA.benv_c1,bc_seq_c1=0.0)
+base = baseout
+out_tempest = luc_model(benv_c1=1000*OLUA.benv_c1,damage_rate = 0.2,tdamage=120,bc_seq_c1=0.0)
+out = out_tempest
+
+
+# Area transfers.. (there shoudn't be)
+plot(times,  base.d[ix] .- base.r_F[ix], lab = "F -> A", linecolor="darkgreen", xlabel="years", title="Land Areas transfers (base scen)");
+plot!(times, base.r_F[ix], lab = "F -> S", linecolor="darkseagreen3")
+
+plot(times,  out.d[ix] .- out.r_F[ix], lab = "F -> A", linecolor="darkgreen", xlabel="years", title="Land Areas transfers (base scen)");
+plot!(times, out.r_F[ix], lab = "F -> S", linecolor="darkseagreen3")
+
+
+plot(times, base.V[ix]./ base.S[ix],   lab = "base", linewidth = 2, linecolor="darkseagreen3", title="SF density");
+plot!(times, out.V[ix] ./ out.S[ix],   lab = "with_storm", linecolor="darkseagreen3", ls=:dot)
+
+plot(times, base.V[ix],   lab = "base", linewidth = 2, linecolor="darkseagreen3", title="SF Volumes");
+plot!(times, out.V[ix],   lab = "with_storm", linecolor="darkseagreen3", ls=:dot)
+
+plot(times, base.h[ix],   lab = "base", linewidth = 2, linecolor="darkseagreen3", title="SF harvesting land");
+plot!(times, out.h[ix],   lab = "with_storm", linecolor="darkseagreen3", ls=:dot)
+
+
+# When carbon sequestration has a value...
+baseout = luc_model(benv_c1=1000*OLUA.benv_c1,bc_seq_c1=100.0)
+base = baseout
+out_tempest = luc_model(benv_c1=1000*OLUA.benv_c1,damage_rate = 0.2,tdamage=120,bc_seq_c1=100.0)
+out = out_tempest
+
+
+plot(times, base.V[ix]./ base.S[ix],   lab = "base", linewidth = 2, linecolor="darkseagreen3", title="SF density");
+plot!(times, out.V[ix] ./ out.S[ix],   lab = "with_storm", linecolor="darkseagreen3", ls=:dot)
+
+plot(times, base.V[ix],   lab = "base", linewidth = 2, linecolor="darkseagreen3", title="SF Volumes");
+plot!(times, out.V[ix],   lab = "with_storm", linecolor="darkseagreen3", ls=:dot)
+
+plot(times, base.h[ix],   lab = "base", linewidth = 2, linecolor="darkseagreen3", title="SF harvesting land");
+plot!(times, out.h[ix],   lab = "with_storm", linecolor="darkseagreen3", ls=:dot)
+
+# Take home:
+# In absense of a value for carbon sequestration, a storm in a stationary SF has the effect of increasing harvesting before, this add on to the effect of the damage.
+# Conversely, when carbon sequestration has a value, the optimal planner decrease harvesting before the storm
