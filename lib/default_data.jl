@@ -140,10 +140,10 @@ crsf_c1    = 50 * (r_F₀+r_A₀+h₀) / ((r_F₀+r_A₀+h₀)^crsf_c2) # Multip
 
 # Options
 optimizer   = Ipopt.Optimizer  # Desired optimizer (solver)
-opt_options = Dict("max_cpu_time" => 20.0, "print_level" => 3)
+opt_options = Dict("max_cpu_time" => 20.0, "print_level" => 4)
 T           = 2000             # Time horizon (years)
-ns          = 401;             # Number of points in the time grid - seems not to influence much the results (good!)
-
+ns          = 401              # Number of points in the time grid - seems not to influence much the results (good!)
+fvars       = Dict{String,Float64}("r_A" => 0.0, "a" => 0.0)           # Fixed variables (dictionary var name => fixed value)
 
 # Risk module
 damage_rate = 0.0

@@ -8,7 +8,6 @@ using Revise
 
 # Load exoxes parameters and options
 include("default_data.jl")
-println(r_F₀)
 
 export luc_model, welfare,
        ben_env, ben_agr, ben_wood, ben_carbon,
@@ -104,16 +103,25 @@ function luc_model(;
     # Options
     optimizer   = optimizer,   # Desired optimizer (solver)
     opt_options = opt_options, # Optimizer options
-    T           = T,     # Time horizont
-    ns          = ns,     # nNmber of supports on which to divide the time horizon
+    T           = T,           # Time horizont
+    ns          = ns,          # nNmber of supports on which to divide the time horizon
+    fvars       = fvars,       # Fixed variables (dictionary var name => fixed value)
 
     # Risk module
     damage_rate = damage_rate,
     tdamage     = tdamage
   ) 
 
-  # Todo: set the initial values of the fixed variables equal to the fixed values  
-
+  # Set the initial values of the fixed variables equal to the fixed values  
+  ("F" in keys(fvars)) && (F₀ = fvars["F"])
+  ("S" in keys(fvars)) && (S₀ = fvars["S"])
+  ("A" in keys(fvars)) && (A₀ = fvars["A"])
+  ("V" in keys(fvars)) && (V₀ = fvars["V"])
+  ("d" in keys(fvars)) && (d₀ = fvars["d"])
+  ("h" in keys(fvars)) && (h₀ = fvars["h"])
+  ("r_F" in keys(fvars)) && (r_F₀ = fvars["r_F"])
+  ("r_A" in keys(fvars)) && (r_A₀ = fvars["r_A"])
+  ("a" in keys(fvars)) && (a₀ = fvars["a"])
 
   # Functions...
   discount(t; σ=σ)                                                 = t == 0 ? 0.0 : exp(-σ*t) # We don't consider welfare from t=0 where flow variables are not influential
@@ -134,29 +142,36 @@ function luc_model(;
   @infinite_parameter(m, t in [0, T], num_supports = ns)
 
   # Variables declaration...
-  @variable(m, F >= 0, Infinite(t), start = F₀ )  # prim forest area
-  @variable(m, S >= 0, Infinite(t), start = S₀ )  # sec forest area
-  @variable(m, A >= 0, Infinite(t), start = A₀ )  # agr forest area
-  @variable(m, V >= 0, Infinite(t), start = V₀ )  # sec vor vol
-  @variable(m, d >= 0, Infinite(t), start = d₀ )  # prim for harv area
-  @variable(m, r_F >= 0, Infinite(t), start = r_F₀ )  # sec for reg area from PF
-  @variable(m, r_A >= 0, Infinite(t), start = r_A₀ )  # sec for reg area from A
-  @variable(m, a >= 0, Infinite(t), start = a₀ )  # agriculture new area from SF
-  @variable(m, h >= 0, Infinite(t), start = h₀  ) # sec for harv area
+  global F = @variable(m, F >= 0, Infinite(t), start = F₀ )  # prim forest area
+  global S = @variable(m, S >= 0, Infinite(t), start = S₀ )  # sec forest area
+  global A = @variable(m, A >= 0, Infinite(t), start = A₀ )  # agr forest area
+  global V = @variable(m, V >= 0, Infinite(t), start = V₀ )  # sec vor vol
+  global d = @variable(m, d >= 0, Infinite(t), start = d₀ )  # prim for harv area
+  global r_F = @variable(m, r_F >= 0, Infinite(t), start = r_F₀ )  # sec for reg area from PF
+  global r_A = @variable(m, r_A >= 0, Infinite(t), start = r_A₀ )  # sec for reg area from A
+  global a = @variable(m, a >= 0, Infinite(t), start = a₀ )  # agriculture new area from SF
+  global h = @variable(m, h >= 0, Infinite(t), start = h₀  ) # sec for harv area
+
+  # Fixed values...
+  for (k,v) in fvars
+    #fix(eval(Symbol(k)), v; force = true)
+    @constraint(m, eval(Symbol(k)) == v)
+  end
+
 
   # Initial conditions....
-  @constraint(m, F(0)   == F₀)
-  @constraint(m, S(0)   == S₀)
-  @constraint(m, A(0)   == A₀)
-  @constraint(m, V(0)   == V₀)
-  @constraint(m, d(0)   == d₀)
-  @constraint(m, h(0)   == h₀)
-  @constraint(m, r_F(0) == r_F₀)
-  @constraint(m, r_A(0) == r_A₀)
-  @constraint(m, a(0)   == a₀)
+  ("F" in keys(fvars))   || (@constraint(m, F(0)   == F₀))
+  ("S" in keys(fvars))   || (@constraint(m, S(0)   == S₀))
+  ("A" in keys(fvars))   || (@constraint(m, A(0)   == A₀))
+  ("V" in keys(fvars))   || (@constraint(m, V(0)   == V₀))
+  ("d" in keys(fvars))   || (@constraint(m, d(0)   == d₀))
+  ("h" in keys(fvars))   || (@constraint(m, h(0)   == h₀))
+  ("r_F" in keys(fvars)) || (@constraint(m, r_F(0) == r_F₀))
+  ("r_A" in keys(fvars)) || (@constraint(m, r_A(0) == r_A₀))
+  ("a" in keys(fvars))   || (@constraint(m, a(0)   == a₀))
 
   #@constraint(m, r(0)  == 0)
-  >
+  
 
   # Other conditions...
   #@constraint(m, tot_land, (F+S+A)  == (F₀+S₀+A₀) )
