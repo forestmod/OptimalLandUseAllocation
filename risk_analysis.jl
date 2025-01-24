@@ -23,8 +23,11 @@ using OLUA
 bc_seq_c1 = 100.0
 bc_sub_c1 = 100.0
 fvars = Dict("a"=>0.0,"r_F"=>0.0,"r_A"=>0.0,"d"=>0.0)
+fvars=Dict()
+fvars = Dict("a"=>0.0,"r_F"=>0.0,"r_A"=>0.0,"d"=>0.0,"h"=>0.0)
+σ = OLUA.σ
 
-base     = luc_model(bc_seq_c1=bc_seq_c1, bc_sub_c1 =bc_sub_c1, fvars=fvars) # compute the optimization for the scenario without damage
+base     = luc_model(bc_seq_c1=bc_seq_c1 , bc_sub_c1 =bc_sub_c1, fvars=fvars) # compute the optimization for the scenario without damage
 
 ix       = 2:(length(base.support)-320) # index for plotting (we discard the distant future and the first year that is not part of the optimization)
 times    = base.support[ix] 
@@ -96,8 +99,8 @@ v_damaged = merged.V[ix_domage-1]*damage_rate
 co2_released = (v_damaged * OLUA.co2seq) / step # this because then wer are going to multiply each point value by the step
 bc_seq_to_remove = bc_seq_c1*exp(OLUA.bc_seq_c2 * times[ix_domage-1]) * co2_released 
 merged.co2_seq[ix_domage] -= co2_released
-#merged.ben_carbon_seq[ix_domage+1] -= bc_seq_to_remove
-#merged.welfare[ix_domage+1] -= bc_seq_to_remove
+merged.ben_carbon_seq[ix_domage+1] -= bc_seq_to_remove
+merged.welfare[ix_domage+1] -= bc_seq_to_remove
 
 plot(times,base.welfare[ix])
 plot!(times,fully_anticipated.welfare[ix])
@@ -107,4 +110,33 @@ res = hcat(base.welfare,fully_anticipated.welfare,merged.welfare)
 
 res = hcat(base.V,fully_anticipated.V,merged.V)
 
-# todo: verify the numbers above, compute the discounted total welfare and run the MC simulations
+# todo: verify the numbers above, compute the discounted total welfare (consider the spep!) and run the MC simulations
+
+full_ix      = 2:length(base.support)
+
+w_base = 0.0
+w_fully_anticipated = 0.0
+w_merged = 0.0
+
+for ix in full_ix
+  t = base.support[ix]
+  w_base += step*base.welfare[ix]*(1+σ)^-t
+  w_fully_anticipated += step*fully_anticipated.welfare[ix]*(1+σ)^-t
+  w_merged += step*merged.welfare[ix]*(1+σ)^-t
+end
+
+println("Welfare analysis:")
+println("- w_base:\t\t\t $w_base")
+println("- w_fully_anticipated:\t $w_fully_anticipated ($(100*w_fully_anticipated/w_base)%)")
+println("- w_merged:\t\t $w_merged ($(100*w_merged/w_base)%)")
+
+base.obj
+fully_anticipated.obj
+
+plot(times,base.V[ix], label="base")
+plot!(times,fully_anticipated.V[ix], label="fully anticipated")
+plot!(times,merged.V[ix], label="ex-post adapt")
+
+plot(times,fully_anticipated.ben_carbon_seq[ix])
+
+base.ben_carbon_seq #todo: check why the hell this is zero !!!!
