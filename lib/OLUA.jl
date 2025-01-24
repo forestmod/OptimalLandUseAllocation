@@ -153,9 +153,10 @@ function luc_model(;
   global h = @variable(m, h >= 0, Infinite(t), start = h₀  ) # sec for harv area
 
   # Fixed values...
-  for (k,v) in fvars
-    #fix(eval(Symbol(k)), v; force = true)
-    @constraint(m, eval(Symbol(k)) == v)
+  for (k,val) in fvars
+    var = variable_by_name(m, k)
+    #fix(var, val; force = true) #slower
+    @constraint(m, var == val)
   end
 
 
