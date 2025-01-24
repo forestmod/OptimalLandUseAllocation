@@ -131,7 +131,8 @@ plot!(times, np2[ix], lab = "Considering harvesting costs")
 # ------------------------------------------------------------------------------
 # ### Test 4: setting no Sf area change and no harvesting leads SF volumes to the Verhulst model
 
-out = luc_model(bwood_c1=0.01,h₀=0,bagr_c1=0.0001)
+#out = luc_model(bwood_c1=0.01,h₀=0,bagr_c1=0.0001)
+out = luc_model(fvars=Dict("r_F"=>0.0,"r_A"=>0.0,"a"=>0.0,"h"=>0.0))
 Dsf = out.V ./ out.S 
 
 @testset "No wood benefits lead no harvesting, no area change and SF following the Verhulst model" begin
@@ -177,6 +178,21 @@ plot(times, rhs[ix]);
 plot!(times,base.h[ix])
 
 @test isapprox(base.h[findfirst(t-> t==200,times)], rhs[findfirst(t-> t==200,times)], rtol=0.001)
+
+# ------------------------------------------------------------------------------
+# ### Test 6: verification of the fvars parameter
+
+out = luc_model(fvars=Dict())
+full = out
+max_r_F_base = maximum(base.r_F)
+max_r_F_full = maximum(full.r_F)
+max_r_A_base = maximum(base.r_A)
+max_r_A_full = maximum(full.r_A)
+max_a_base = maximum(base.a)
+max_a_full = maximum(full.a)
+
+@test isapprox(max_r_A_base, 0.0, atol=1e-15) && max_r_A_full > 1e-15
+@test isapprox(max_a_base, 0.0, atol=1e-15) && max_a_full > 1e-15
 
 
 # ------------------------------------------------------------------------------
