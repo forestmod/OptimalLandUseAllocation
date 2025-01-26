@@ -27,6 +27,15 @@ fvars=Dict()
 fvars = Dict("a"=>0.0,"r_F"=>0.0,"r_A"=>0.0,"d"=>0.0,"h"=>0.0)
 σ = OLUA.σ
 
+base     = luc_model(bc_seq_c1=bc_seq_c1 , bc_sub_c1 =bc_sub_c1, fvars=fvars,tdamage=40, damage_rate=0.4) # compute the optimization for the scenario without damage
+plot(times,base.V[ix])
+plot(times,base.co2_seq[ix])
+plot(times,base.ben_carbon_seq[ix])
+
+base.co2_seq
+
+
+
 base     = luc_model(bc_seq_c1=bc_seq_c1 , bc_sub_c1 =bc_sub_c1, fvars=fvars) # compute the optimization for the scenario without damage
 
 ix       = 2:(length(base.support)-320) # index for plotting (we discard the distant future and the first year that is not part of the optimization)
@@ -137,6 +146,9 @@ plot(times,base.V[ix], label="base")
 plot!(times,fully_anticipated.V[ix], label="fully anticipated")
 plot!(times,merged.V[ix], label="ex-post adapt")
 
-plot(times,fully_anticipated.ben_carbon_seq[ix])
+plot(times,base.ben_carbon_seq[ix], label="base")
+plot!(times,fully_anticipated.ben_carbon_seq[ix], label="fully anticipated")
+plot!(times,merged.ben_carbon_seq[ix], label="ex-post adapt")
 
-base.ben_carbon_seq #todo: check why the hell this is zero !!!!
+plot(times,merged.co2_seq[ix])
+plot(times,merged.ben_carbon_seq[ix]) # TODO: understand why there is an increase here before the storm !

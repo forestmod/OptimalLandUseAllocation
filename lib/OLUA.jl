@@ -13,40 +13,95 @@ export luc_model, welfare,
        ben_env, ben_agr, ben_wood, ben_carbon,
        cost_pfharv, cost_sfharv, cost_sfreg
 
-ben_env(F;benv_c1=benv_c1,benv_c2=benv_c2)                       = (benv_c1*F^benv_c2) # Environmental benefits [M$]
-ben_agr(A;bagr_c1=bagr_c1,bagr_c2=bagr_c2)                       = (bagr_c1*A^bagr_c2) # Agricultural use benefits [M$]
-ben_wood(S,V,d,h;bwood_c1=bwood_c1,bwood_c2=bwood_c2,D=D)        = (bwood_c1*(d * D + h * V/S)^bwood_c2) # Wood use benefits [M$] - Here there is an important simplification that I harvest the forest homogeneously (instead of selectively the mature one)
-function ben_carbon_seq(S,V,d,h,t; D=D,γ=γ,K=K,bc_seq_c1=bc_seq_c1,bc_seq_c2=bc_seq_c2,co2seq=co2seq,damage_rate=damage_rate,tdamage=tdamage,T=T,ns=ns)
+#=
+@kwargs mutable struct Parameters
+  σ::Float64           = σ,        # Discount rate 
+  K::Float64           = K,        # Maximum density of the secondary forest (i.e. carrying capacity), 
+  γ::Float64           = γ,        # Growth rate of the logistic function in terms of density
+  co2seq::Float64      =  co2seq,  # Coefficient m³ wood resourses -> ton CO2eq sequestered
+  co2sub::Float64      =  co2sub,  # Coefficient m³ harvested timber -> ton CO2eq substituted
+  benv_c1::Float64     = benv_c1,  # Multiplier of the environmental benefits
+  benv_c2::Float64     = benv_c2,  # Power of the environmantal benefit
+  bagr_c1::Float64     = bagr_c1,  # Multiplier of the agricultural benefits
+  bagr_c2::Float64     = bagr_c2,  # Power of the agricultural benefits
+  bwood_c1::Float64    = bwood_c1, # Multiplier of the wood-use benefits
+  bwood_c2::Float64    = bwood_c2, # Power of the wood-use benefits
+  chpf_c1::Float64     = chpf_c1,  # Multiplier of the harvesting costs of primary forest
+  chpf_c2::Float64     = chpf_c2,  # Power of the harvesting costs of primary forest (harvested area)
+  chpf_c3::Float64     = chpf_c3,  # Power of the harvesting costs of primary forest (primary forest area)
+  chsf_c1::Float64     = chsf_c1,  # Multiplier of the harvesting costs of secondary forest
+  chsf_c2::Float64     = chsf_c2,  # Power of the harvesting costs of secondary forest
+  crsf_c1::Float64     = crsf_c1,  # Multiplier of the regeneration costs of secondary forest
+  crsf_c2::Float64     = crsf_c2,  # Power of the regeneration costs of secondary forest
+  D::Float64           = D,        # Density of the primary forest  (constant)
+  bc_seq_c1::Float64       = bc_seq_c1 ,   # Carbon (seq) initial price
+  bc_seq_c2::Float64       = bc_seq_c2,    # Carbon (seq) price growth rate
+  bc_sub_c1::Float64       = bc_sub_c1 ,   # Carbon (sub) initial price
+  bc_sub_c2::Float64       = bc_sub_c2,    # Carbon (sub) price growth rate
+
+  # Init values...
+  F₀::Float64          = F₀,       # Initial primary-forest area
+  S₀::Float64          = S₀,       # Initial secondary forest area
+  A₀::Float64          = A₀,       # Initial agricultural area
+  V₀::Float64          = V₀,       # Initial secondary forest volumes
+  d₀::Float64          = d₀,       # Initial prim for harvesting
+  h₀::Float64          = h₀,       # Initial sec for harvesting
+  r_F₀::Float64        = r_F₀,     # Initial sec for regeneration from PF
+  r_A₀::Float64        = r_A₀,     # Initial sec for regeneration from A
+  a₀::Float64          = a₀,       # Initial area transfer from A to SF
+
+  # Options
+  optimizer::Any  = optimizer,   # Desired optimizer (solver)
+  opt_options::Dict{String,Any}  = opt_options, # Optimizer options
+  T::Int64           = T,           # Time horizont
+  ns::Int64          = ns,          # nNmber of supports on which to divide the time horizon
+  fvars::Dict{String,Float64}       = fvars,       # Fixed variables (dictionary var name => fixed value)
+
+  # Risk module
+  damage_rate::Float64 = damage_rate,
+  tdamage::Int64       = tdamage
+end
+=#
+
+ben_env(F;benv_c1,benv_c2)                       = (benv_c1*F^benv_c2) # Environmental benefits [M$]
+ben_agr(A;bagr_c1,bagr_c2)                       = (bagr_c1*A^bagr_c2) # Agricultural use benefits [M$]
+ben_wood(S,V,d,h;bwood_c1,bwood_c2,D)        = (bwood_c1*(d * D + h * V/S)^bwood_c2) # Wood use benefits [M$] - Here there is an important simplification that I harvest the forest homogeneously (instead of selectively the mature one)
+function ben_carbon_seq(S,V,d,h,t; D,γ,K,bc_seq_c1,bc_seq_c2,co2seq,damage_rate,tdamage,T,ns)
   # Carbon sequestration benefits [M$] - here we don't yeat know var_vol_sf, so rewriting it explicitly
   dr = InfiniteOpt.ifelse(t < tdamage, 0.0,  InfiniteOpt.ifelse(t > tdamage+(T/ns), 0.0, damage_rate)     ) * ns/T # must be adjusted as it is "repeated"
+  #println("t: $t \tmin: $tdamage \tmax: $(tdamage+(T/ns)) \t damage_rate: $damage_rate \tdr: $dr")
   return bc_seq_c1*exp(bc_seq_c2 * t) * ((V*γ*(1-(V / (S * K) )) - h * (V/S) - dr*V  )   - (d * D )  ) * co2seq 
 end
+ben_carbon_sub(S,V,d,h,t; D,bc_sub_c1,bc_sub_c2,co2sub)  = bc_sub_c1*exp(bc_sub_c2 * t) * (d * D + h * V/S)  * co2sub # Carbon substitution benefits [M$]
+cost_pfharv(F,d;chpf_c1,chpf_c2,chpf_c3) = (chpf_c1 * (d*D)^chpf_c2 * F^chpf_c3) # Harvesting primary forest costs [€]
+cost_sfharv(S,V,h;chsf_c1,chsf_c2)               = (chsf_c1 * (h * V/S)^chsf_c2)  # Harvesting secondary forest costs [€]
+cost_sfreg(r_F,r_A,h;crsf_c1,crsf_c2)                  = (crsf_c1 * (r_F+r_A+h) ^ crsf_c2)  # Regeneration of secondary forest costs [€]
+
+function co2_seq(S,V,d,h,t;D,γ,K,co2seq,damage_rate,tdamage,T,ns) 
+  dr = InfiniteOpt.ifelse(t < tdamage, 0.0,  InfiniteOpt.ifelse(t > tdamage+(T/ns), 0.0, damage_rate)     ) * ns/T # must be adjusted as it is "repeated"
+  #println("t: $t \tmin: $tdamage \tmax: $(tdamage+(T/ns)) \t damage_rate: $damage_rate \tdr: $dr")
+  return  ((V*γ*(1-(V / (S * K) )) - h * (V/S) - dr*V  )   - (d * D )  ) * co2seq 
+end
+co2_sub(S,V,d,h; D,co2sub) = (d * D + h * V/S)  * co2sub # CO2eq substituted by harvested timber that year [tons of CO2 eq]
 
 
-ben_carbon_sub(S,V,d,h,t; D=D,bc_sub_c1=bc_sub_c1,bc_sub_c2=bc_sub_c2,co2sub=co2sub)  = bc_sub_c1*exp(bc_sub_c2 * t) * (d * D + h * V/S)  * co2sub # Carbon substitution benefits [M$]
-cost_pfharv(F,d;chpf_c1=chpf_c1,chpf_c2=chpf_c2,chpf_c3=chpf_c3) = (chpf_c1 * (d*D)^chpf_c2 * F^chpf_c3) # Harvesting primary forest costs [€]
-cost_sfharv(S,V,h;chsf_c1=chsf_c1,chsf_c2=chsf_c2)               = (chsf_c1 * (h * V/S)^chsf_c2)  # Harvesting secondary forest costs [€]
-cost_sfreg(r_F,r_A,h;crsf_c1=crsf_c1,crsf_c2=crsf_c2)                  = (crsf_c1 * (r_F+r_A+h) ^ crsf_c2)  # Regeneration of secondary forest costs [€]
-
-co2_seq(S,V,d,h; D=D,γ=γ,K=K,co2seq=co2seq) = (((V)*γ*(1-(V / (S * K) )) - h * (V/S)) - (d * D )  ) * co2seq # CO2eq sequestered in forest resourses that year [tons of CO2 eq]
-co2_sub(S,V,d,h; D=D,co2sub=co2sub) = (d * D + h * V/S)  * co2sub # CO2eq substituted by harvested timber that year [tons of CO2 eq]
-
-function welfare(F,S,A,V,d,h,r_F,r_A,t;D=D,γ=γ,K=K,
-                co2seq=co2seq,co2sub=co2sub,
-                benv_c1=benv_c1,benv_c2=benv_c2,
-                bagr_c1=bagr_c1,bagr_c2=bagr_c2,
-                bwood_c1=bwood_c1,bwood_c2=bwood_c2,
-                bc_seq_c1=bc_seq_c1,bc_seq_c2=bc_seq_c2,
-                bc_sub_c1=bc_sub_c1,bc_sub_c2=bc_sub_c2,
-                chpf_c1=chpf_c1,chpf_c2=chpf_c2,chpf_c3=chpf_c3,
-                chsf_c1=chsf_c1,chsf_c2=chsf_c2,
-                crsf_c1=crsf_c1,crsf_c2=crsf_c2
+function welfare(F,S,A,V,d,h,r_F,r_A,t;D,γ,K,
+                co2seq,co2sub,
+                benv_c1,benv_c2,
+                bagr_c1,bagr_c2,
+                bwood_c1,bwood_c2,
+                bc_seq_c1,bc_seq_c2,
+                bc_sub_c1,bc_sub_c2,
+                chpf_c1,chpf_c2,chpf_c3,
+                chsf_c1,chsf_c2,
+                crsf_c1,crsf_c2,
+                damage_rate=damage_rate,tdamage=tdamage,T=T,ns=ns
   )
   return (
     ben_env(F;benv_c1=benv_c1,benv_c2=benv_c2)
   + ben_agr(A;bagr_c1=bagr_c1,bagr_c2=bagr_c2)
   + ben_wood(S,V,d,h;bwood_c1=bwood_c1,bwood_c2=bwood_c2,D=D) 
-  + ben_carbon_seq(S,V,d,h,t;D=D,γ=γ,K=K,bc_seq_c1=bc_seq_c1,bc_seq_c2=bc_seq_c2,co2seq=co2seq)
+  + ben_carbon_seq(S,V,d,h,t;D=D,γ=γ,K=K,bc_seq_c1=bc_seq_c1,bc_seq_c2=bc_seq_c2,co2seq=co2seq,damage_rate=damage_rate,tdamage=tdamage,T=T,ns=ns)
   + ben_carbon_sub(S,V,d,h,t;D=D,bc_sub_c1=bc_sub_c1,bc_sub_c2=bc_sub_c2,co2sub=co2sub)
   - cost_pfharv(F,d;chpf_c1=chpf_c1,chpf_c2=chpf_c2,chpf_c3=chpf_c3)
   - cost_sfharv(S,V,h;chsf_c1=chsf_c1,chsf_c2=chsf_c2)
@@ -65,52 +120,52 @@ The welfare optimization relates hence to times [t=1,t=T], i.e. [1,T], but the v
 """
 
 function luc_model(;
-    σ           = σ,        # Discount rate 
-    K           = K,        # Maximum density of the secondary forest (i.e. carrying capacity), 
-    γ           = γ,        # Growth rate of the logistic function in terms of density
-    co2seq      =  co2seq,  # Coefficient m³ wood resourses -> ton CO2eq sequestered
-    co2sub      =  co2sub,  # Coefficient m³ harvested timber -> ton CO2eq substituted
-    benv_c1     = benv_c1,  # Multiplier of the environmental benefits
-    benv_c2     = benv_c2,  # Power of the environmantal benefit
-    bagr_c1     = bagr_c1,  # Multiplier of the agricultural benefits
-    bagr_c2     = bagr_c2,  # Power of the agricultural benefits
-    bwood_c1    = bwood_c1, # Multiplier of the wood-use benefits
-    bwood_c2    = bwood_c2, # Power of the wood-use benefits
-    chpf_c1     = chpf_c1,  # Multiplier of the harvesting costs of primary forest
-    chpf_c2     = chpf_c2,  # Power of the harvesting costs of primary forest (harvested area)
-    chpf_c3     = chpf_c3,  # Power of the harvesting costs of primary forest (primary forest area)
-    chsf_c1     = chsf_c1,  # Multiplier of the harvesting costs of secondary forest
-    chsf_c2     = chsf_c2,  # Power of the harvesting costs of secondary forest
-    crsf_c1     = crsf_c1,  # Multiplier of the regeneration costs of secondary forest
-    crsf_c2     = crsf_c2,  # Power of the regeneration costs of secondary forest
-    D           = D,        # Density of the primary forest  (constant)
-    bc_seq_c1       = bc_seq_c1 ,   # Carbon (seq) initial price
-    bc_seq_c2       = bc_seq_c2,    # Carbon (seq) price growth rate
-    bc_sub_c1       = bc_sub_c1 ,   # Carbon (sub) initial price
-    bc_sub_c2       = bc_sub_c2,    # Carbon (sub) price growth rate
+  σ           = σ,        # Discount rate 
+  K           = K,        # Maximum density of the secondary forest (i.e. carrying capacity), 
+  γ           = γ,        # Growth rate of the logistic function in terms of density
+  co2seq      =  co2seq,  # Coefficient m³ wood resourses -> ton CO2eq sequestered
+  co2sub      =  co2sub,  # Coefficient m³ harvested timber -> ton CO2eq substituted
+  benv_c1     = benv_c1,  # Multiplier of the environmental benefits
+  benv_c2     = benv_c2,  # Power of the environmantal benefit
+  bagr_c1     = bagr_c1,  # Multiplier of the agricultural benefits
+  bagr_c2     = bagr_c2,  # Power of the agricultural benefits
+  bwood_c1    = bwood_c1, # Multiplier of the wood-use benefits
+  bwood_c2    = bwood_c2, # Power of the wood-use benefits
+  chpf_c1     = chpf_c1,  # Multiplier of the harvesting costs of primary forest
+  chpf_c2     = chpf_c2,  # Power of the harvesting costs of primary forest (harvested area)
+  chpf_c3     = chpf_c3,  # Power of the harvesting costs of primary forest (primary forest area)
+  chsf_c1     = chsf_c1,  # Multiplier of the harvesting costs of secondary forest
+  chsf_c2     = chsf_c2,  # Power of the harvesting costs of secondary forest
+  crsf_c1     = crsf_c1,  # Multiplier of the regeneration costs of secondary forest
+  crsf_c2     = crsf_c2,  # Power of the regeneration costs of secondary forest
+  D           = D,        # Density of the primary forest  (constant)
+  bc_seq_c1       = bc_seq_c1 ,   # Carbon (seq) initial price
+  bc_seq_c2       = bc_seq_c2,    # Carbon (seq) price growth rate
+  bc_sub_c1       = bc_sub_c1 ,   # Carbon (sub) initial price
+  bc_sub_c2       = bc_sub_c2,    # Carbon (sub) price growth rate
 
-    # Init values...
-    F₀          = F₀,       # Initial primary-forest area
-    S₀          = S₀,       # Initial secondary forest area
-    A₀          = A₀,       # Initial agricultural area
-    V₀          = V₀,       # Initial secondary forest volumes
-    d₀          = d₀,       # Initial prim for harvesting
-    h₀          = h₀,       # Initial sec for harvesting
-    r_F₀        = r_F₀,     # Initial sec for regeneration from PF
-    r_A₀        = r_A₀,     # Initial sec for regeneration from A
-    a₀          = a₀,       # Initial area transfer from A to SF
+  # Init values...
+  F₀          = F₀,       # Initial primary-forest area
+  S₀          = S₀,       # Initial secondary forest area
+  A₀          = A₀,       # Initial agricultural area
+  V₀          = V₀,       # Initial secondary forest volumes
+  d₀          = d₀,       # Initial prim for harvesting
+  h₀          = h₀,       # Initial sec for harvesting
+  r_F₀        = r_F₀,     # Initial sec for regeneration from PF
+  r_A₀        = r_A₀,     # Initial sec for regeneration from A
+  a₀          = a₀,       # Initial area transfer from A to SF
 
-    # Options
-    optimizer   = optimizer,   # Desired optimizer (solver)
-    opt_options = opt_options, # Optimizer options
-    T           = T,           # Time horizont
-    ns          = ns,          # nNmber of supports on which to divide the time horizon
-    fvars       = fvars,       # Fixed variables (dictionary var name => fixed value)
+  # Options
+  optimizer   = optimizer,   # Desired optimizer (solver)
+  opt_options = opt_options, # Optimizer options
+  T           = T,           # Time horizont
+  ns          = ns,          # nNmber of supports on which to divide the time horizon
+  fvars       = fvars,       # Fixed variables (dictionary var name => fixed value)
 
-    # Risk module
-    damage_rate = damage_rate,
-    tdamage     = tdamage
-  ) 
+  # Risk module
+  damage_rate = damage_rate,
+  tdamage     = tdamage
+ ) 
 
   # Set the initial values of the fixed variables equal to the fixed values  
   ("F" in keys(fvars)) && (F₀ = fvars["F"])
@@ -206,8 +261,9 @@ function luc_model(;
             bc_sub_c1=bc_sub_c1,bc_sub_c2=bc_sub_c2,
             chpf_c1=chpf_c1,chpf_c2=chpf_c2,chpf_c3=chpf_c3,
             chsf_c1=chsf_c1,chsf_c2=chsf_c2,
-            crsf_c1=crsf_c1,crsf_c2=crsf_c2),
-    t, weight_func = discount)
+            crsf_c1=crsf_c1,crsf_c2=crsf_c2,
+            damage_rate=damage_rate,tdamage=tdamage,T=T,ns=ns),
+            t, weight_func = discount)
   )
 
   # Optimisation and retrival of optimal data/time path
@@ -232,18 +288,28 @@ function luc_model(;
 
   ts       = supports(t)
   opt_obj  = objective_value(m) 
-  ben_env_opt = ben_env.(F_opt)
-  ben_agr_opt     = ben_agr.(A_opt)
-  ben_wood_opt    = ben_wood.(S_opt,V_opt,d_opt,h_opt)
-  ben_carbon_seq_opt  = ben_carbon_seq.(S_opt,V_opt,d_opt,h_opt,ts)
-  ben_carbon_sub_opt  = ben_carbon_sub.(S_opt,V_opt,d_opt,h_opt,ts)
-  cost_pfharv_opt = cost_pfharv.(F_opt,d_opt,)
-  cost_sfharv_opt = cost_sfharv.(S_opt,V_opt,h_opt)
-  cost_sfreg_opt  = cost_sfreg.(r_Fopt,r_Aopt,h_opt)
-  welfare_opt     = welfare.(F_opt,S_opt,A_opt,V_opt,d_opt,h_opt,r_Fopt,r_Aopt,ts)
-  co2_seq_opt     = co2_seq.(S_opt,V_opt,d_opt,h_opt)
-  co2_sub_opt     = co2_sub.(S_opt,V_opt,d_opt,h_opt)
-
+  ben_env_opt = ben_env.(F_opt;benv_c1=benv_c1,benv_c2=benv_c2)
+  ben_agr_opt     = ben_agr.(A_opt;bagr_c1=bagr_c1,bagr_c2=bagr_c2)
+  ben_wood_opt    = ben_wood.(S_opt,V_opt,d_opt,h_opt;bwood_c1=bwood_c1,bwood_c2=bwood_c2,D=D) 
+  ben_carbon_seq_opt  = ben_carbon_seq.(S_opt,V_opt,d_opt,h_opt,ts;D=D,γ=γ,K=K,bc_seq_c1=bc_seq_c1,bc_seq_c2=bc_seq_c2,co2seq=co2seq,damage_rate=damage_rate,tdamage=tdamage,T=T,ns=ns)
+  ben_carbon_sub_opt  = ben_carbon_sub.(S_opt,V_opt,d_opt,h_opt,ts;D=D,bc_sub_c1=bc_sub_c1,bc_sub_c2=bc_sub_c2,co2sub=co2sub)
+  cost_pfharv_opt = cost_pfharv.(F_opt,d_opt;chpf_c1=chpf_c1,chpf_c2=chpf_c2,chpf_c3=chpf_c3)
+  cost_sfharv_opt = cost_sfharv.(S_opt,V_opt,h_opt;chsf_c1=chsf_c1,chsf_c2=chsf_c2)
+  cost_sfreg_opt  = cost_sfreg.(r_Fopt,r_Aopt,h_opt;crsf_c1=crsf_c1,crsf_c2=crsf_c2)
+  welfare_opt     = welfare.(F_opt,S_opt,A_opt,V_opt,d_opt,h_opt,r_Fopt,r_Aopt,ts,
+                              D=D,γ=γ,K=K,
+                              co2seq=co2seq,co2sub=co2sub,
+                              benv_c1=benv_c1,benv_c2=benv_c2,
+                              bagr_c1=bagr_c1,bagr_c2=bagr_c2,
+                              bwood_c1=bwood_c1,bwood_c2=bwood_c2,
+                              bc_seq_c1=bc_seq_c1,bc_seq_c2=bc_seq_c2,
+                              bc_sub_c1=bc_sub_c1,bc_sub_c2=bc_sub_c2,
+                              chpf_c1=chpf_c1,chpf_c2=chpf_c2,chpf_c3=chpf_c3,
+                              chsf_c1=chsf_c1,chsf_c2=chsf_c2,
+                              crsf_c1=crsf_c1,crsf_c2=crsf_c2,
+                              damage_rate=damage_rate,tdamage=tdamage,T=T,ns=ns)
+  co2_seq_opt     = co2_seq.(S_opt,V_opt,d_opt,h_opt,ts; D=D,γ=γ,K=K,co2seq=co2seq,damage_rate=damage_rate,tdamage=tdamage,T=T,ns=ns)
+  co2_sub_opt     = co2_sub.(S_opt,V_opt,d_opt,h_opt;D=D,co2sub=co2sub)
   return (F=F_opt, S=S_opt, A=A_opt, V=V_opt, d=d_opt, h=h_opt, r_F=r_Fopt,r_A=r_Aopt,a=aopt,
           obj=opt_obj, support= ts, status=status,
           ben_env = ben_env_opt, ben_agr = ben_agr_opt, ben_wood= ben_wood_opt, ben_carbon_seq = ben_carbon_seq_opt, ben_carbon_sub = ben_carbon_sub_opt,
