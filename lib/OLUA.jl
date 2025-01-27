@@ -13,56 +13,6 @@ export luc_model, welfare,
        ben_env, ben_agr, ben_wood, ben_carbon,
        cost_pfharv, cost_sfharv, cost_sfreg
 
-#=
-@kwargs mutable struct Parameters
-  σ::Float64           = σ,        # Discount rate 
-  K::Float64           = K,        # Maximum density of the secondary forest (i.e. carrying capacity), 
-  γ::Float64           = γ,        # Growth rate of the logistic function in terms of density
-  co2seq::Float64      =  co2seq,  # Coefficient m³ wood resourses -> ton CO2eq sequestered
-  co2sub::Float64      =  co2sub,  # Coefficient m³ harvested timber -> ton CO2eq substituted
-  benv_c1::Float64     = benv_c1,  # Multiplier of the environmental benefits
-  benv_c2::Float64     = benv_c2,  # Power of the environmantal benefit
-  bagr_c1::Float64     = bagr_c1,  # Multiplier of the agricultural benefits
-  bagr_c2::Float64     = bagr_c2,  # Power of the agricultural benefits
-  bwood_c1::Float64    = bwood_c1, # Multiplier of the wood-use benefits
-  bwood_c2::Float64    = bwood_c2, # Power of the wood-use benefits
-  chpf_c1::Float64     = chpf_c1,  # Multiplier of the harvesting costs of primary forest
-  chpf_c2::Float64     = chpf_c2,  # Power of the harvesting costs of primary forest (harvested area)
-  chpf_c3::Float64     = chpf_c3,  # Power of the harvesting costs of primary forest (primary forest area)
-  chsf_c1::Float64     = chsf_c1,  # Multiplier of the harvesting costs of secondary forest
-  chsf_c2::Float64     = chsf_c2,  # Power of the harvesting costs of secondary forest
-  crsf_c1::Float64     = crsf_c1,  # Multiplier of the regeneration costs of secondary forest
-  crsf_c2::Float64     = crsf_c2,  # Power of the regeneration costs of secondary forest
-  D::Float64           = D,        # Density of the primary forest  (constant)
-  bc_seq_c1::Float64       = bc_seq_c1 ,   # Carbon (seq) initial price
-  bc_seq_c2::Float64       = bc_seq_c2,    # Carbon (seq) price growth rate
-  bc_sub_c1::Float64       = bc_sub_c1 ,   # Carbon (sub) initial price
-  bc_sub_c2::Float64       = bc_sub_c2,    # Carbon (sub) price growth rate
-
-  # Init values...
-  F₀::Float64          = F₀,       # Initial primary-forest area
-  S₀::Float64          = S₀,       # Initial secondary forest area
-  A₀::Float64          = A₀,       # Initial agricultural area
-  V₀::Float64          = V₀,       # Initial secondary forest volumes
-  d₀::Float64          = d₀,       # Initial prim for harvesting
-  h₀::Float64          = h₀,       # Initial sec for harvesting
-  r_F₀::Float64        = r_F₀,     # Initial sec for regeneration from PF
-  r_A₀::Float64        = r_A₀,     # Initial sec for regeneration from A
-  a₀::Float64          = a₀,       # Initial area transfer from A to SF
-
-  # Options
-  optimizer::Any  = optimizer,   # Desired optimizer (solver)
-  opt_options::Dict{String,Any}  = opt_options, # Optimizer options
-  T::Int64           = T,           # Time horizont
-  ns::Int64          = ns,          # nNmber of supports on which to divide the time horizon
-  fvars::Dict{String,Float64}       = fvars,       # Fixed variables (dictionary var name => fixed value)
-
-  # Risk module
-  damage_rate::Float64 = damage_rate,
-  tdamage::Int64       = tdamage
-end
-=#
-
 ben_env(F;benv_c1,benv_c2)                       = (benv_c1*F^benv_c2) # Environmental benefits [M$]
 ben_agr(A;bagr_c1,bagr_c2)                       = (bagr_c1*A^bagr_c2) # Agricultural use benefits [M$]
 ben_wood(S,V,d,h;bwood_c1,bwood_c2,D)        = (bwood_c1*(d * D + h * V/S)^bwood_c2) # Wood use benefits [M$] - Here there is an important simplification that I harvest the forest homogeneously (instead of selectively the mature one)
@@ -153,7 +103,7 @@ function luc_model(;
   h₀          = h₀,       # Initial sec for harvesting
   r_F₀        = r_F₀,     # Initial sec for regeneration from PF
   r_A₀        = r_A₀,     # Initial sec for regeneration from A
-  a₀          = a₀,       # Initial area transfer from A to SF
+  a₀          = a₀,       # Initial area transfer from SF to A
 
   # Options
   optimizer   = optimizer,   # Desired optimizer (solver)
