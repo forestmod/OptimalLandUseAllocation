@@ -24,6 +24,10 @@ bc_seq_c1 = 100.0
 bc_sub_c1 = 100.0
 σ = OLUA.σ
 
+# Damage scenario
+damage_rate = 0.5
+tdamage     = 40 # for simplicity, always rounded to the nearest 5 year
+
 
 # ### Compute some indexes..
 base     = luc_model()
@@ -53,15 +57,14 @@ fvars = Dict("a"=>0.0,"r_A"=>0.0)
 # fvars=Dict() # all land use changes possible
 # - concerning bc_seq_c1 and bc_sub_c1:
 # bc_seq_c1 = 0.0; bc_sub_c1 = 0.0 # No carbon benefits
+# - concerning the intensity and timing of the damage:
+# damage_rate = 0.8; tdamage = 40
+# damage_rate = 0.5; tdamage = 30
 
 
 # ### Base Case Analysis
 base     = luc_model(bc_seq_c1=bc_seq_c1 , bc_sub_c1 =bc_sub_c1, fvars=fvars) # compute the optimization for the scenario without damage
 
-
-# Damage scenario
-damage_rate = 0.5
-tdamage     = 40 # for simplicity, always rounded to the nearest 5 year
 
 fully_anticipated  = luc_model(bc_seq_c1=bc_seq_c1, bc_sub_c1 =bc_sub_c1, damage_rate=damage_rate, tdamage=tdamage, fvars=fvars) # compute the optimization for the scenario without damage
 
