@@ -70,7 +70,7 @@ function ben_carbon_seq(S,V,d,h,t; D,γ,K,bc_seq_c1,bc_seq_c2,co2seq,damage_rate
   # Carbon sequestration benefits [M$] - here we don't yeat know var_vol_sf, so rewriting it explicitly
   dr = InfiniteOpt.ifelse(t < tdamage, 0.0,  InfiniteOpt.ifelse(t > tdamage+(T/ns), 0.0, damage_rate)     ) * ns/T # must be adjusted as it is "repeated"
   #println("t: $t \tmin: $tdamage \tmax: $(tdamage+(T/ns)) \t damage_rate: $damage_rate \tdr: $dr")
-  return bc_seq_c1*exp(bc_seq_c2 * t) * ((V*γ*(1-(V / (S * K) )) - h * (V/S) - dr*V  )   - (d * D )  ) * co2seq 
+  return bc_seq_c1*exp(bc_seq_c2 * t) * ((V*γ*(1-(V / (S * K) )) - h * (V/S) - dr*   (V + (V*γ*(1-(V / (S * K) )) - h * (V/S) ))     )   - (d * D )  ) * co2seq 
 end
 ben_carbon_sub(S,V,d,h,t; D,bc_sub_c1,bc_sub_c2,co2sub)  = bc_sub_c1*exp(bc_sub_c2 * t) * (d * D + h * V/S)  * co2sub # Carbon substitution benefits [M$]
 cost_pfharv(F,d;chpf_c1,chpf_c2,chpf_c3) = (chpf_c1 * (d*D)^chpf_c2 * F^chpf_c3) # Harvesting primary forest costs [€]
@@ -80,7 +80,7 @@ cost_sfreg(r_F,r_A,h;crsf_c1,crsf_c2)                  = (crsf_c1 * (r_F+r_A+h) 
 function co2_seq(S,V,d,h,t;D,γ,K,co2seq,damage_rate,tdamage,T,ns) 
   dr = InfiniteOpt.ifelse(t < tdamage, 0.0,  InfiniteOpt.ifelse(t > tdamage+(T/ns), 0.0, damage_rate)     ) * ns/T # must be adjusted as it is "repeated"
   #println("t: $t \tmin: $tdamage \tmax: $(tdamage+(T/ns)) \t damage_rate: $damage_rate \tdr: $dr")
-  return  ((V*γ*(1-(V / (S * K) )) - h * (V/S) - dr*V  )   - (d * D )  ) * co2seq 
+  return  ((V*γ*(1-(V / (S * K) )) - h * (V/S) - dr *  (V + (V*γ*(1-(V / (S * K) )) - h * (V/S) ))           )   - (d * D )  ) * co2seq 
 end
 co2_sub(S,V,d,h; D,co2sub) = (d * D + h * V/S)  * co2sub # CO2eq substituted by harvested timber that year [tons of CO2 eq]
 
@@ -116,7 +116,7 @@ Compute land use optimizing welfare.
 A note on the time dimension:
 state_var[t] = state_var[t-1] + flow_var[t]
 state_var[t=0] is the current state
-The welfare optimization relates hence to times [t=1,t=T], i.e. [1,T], but the variables in the model relate to time [t=0,t=T] as we need the state variables at time t=0 (and these are fixed, as well for the flow faviables t=0 - that don't influence the model)
+The welfare optimization relates hence to times [t=1,t=T], i.e. [1,T], but the variables in the model relate to time [t=0,t=T] as we need the state variables at time t=0 (and these are fixed, as well for the flow vaviables t=0 - that don't influence the model)
 """
 
 function luc_model(;
@@ -188,7 +188,7 @@ function luc_model(;
   function var_vol_sf(S,V,h,t;γ=γ,K=K,damage_rate=damage_rate,tdamage=tdamage,T=T,ns=ns)
     # Mm³ See https://en.wikipedia.org/wiki/Logistic_function#In_ecology:_modeling_population_growth (the logistic growth is in terms of density: (V_sf/A_sf)*γ*(1-((V_sf/A_sf) /maxD ))*A_sf -hV_sf )
     dr = InfiniteOpt.ifelse(t < tdamage, 0.0,  InfiniteOpt.ifelse(t > tdamage+(T/ns), 0.0, damage_rate)     ) * ns/T # must be adjusted as it is "repeated"
-    return V*γ*(1-(V / (S * K) )) - h * (V/S) - dr*V
+    return V*γ*(1-(V / (S * K) )) - h * (V/S) - dr * (V + (V*γ*(1-(V / (S * K) )) - h * (V/S) ))
   end 
   # Here there is an important simplification that I harvest the forest homogeneously (instead of selectively the mature one)
 
